@@ -3,415 +3,493 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sovereign Global Shop · Nostr Edition</title>
+<title>witness — proven, and gone</title>
 <style>
+  @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500&family=JetBrains+Mono:wght@400;500&display=swap');
+
   :root {
-    --ink: #13110e;
-    --paper: #f4ede0;
-    --line: #cdbfa6;
-    --wax: #9c2b1f;
-    --ok: #3c6b4a;
+    --void: #0a0a0c;
+    --void-2: #121216;
+    --ash: #6b6b78;
+    --ash-dim: #3a3a44;
+    --live: #e8e6df;
+    --pulse: #7fd9c4;
+    --pulse-dim: #3a6b60;
+    --sign: #c9a86b;
   }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body { height: 100%; overflow: hidden; }
+
   body {
-    font-family: system-ui, sans-serif;
-    background: var(--paper);
-    color: var(--ink);
-    padding: 20px;
-    margin: 0;
+    background:
+      radial-gradient(ellipse 80% 60% at 50% 0%, #15151b 0%, transparent 70%),
+      var(--void);
+    color: var(--live);
+    font-family: 'Fraunces', serif;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    position: relative;
   }
+
+  /* grain */
+  body::after {
+    content: '';
+    position: fixed; inset: 0;
+    pointer-events: none;
+    opacity: 0.035;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    z-index: 999;
+  }
+
   header {
-    border-bottom: 2px solid var(--ink);
-    padding-bottom: 10px;
-    margin-bottom: 20px;
+    padding: 22px 26px 14px;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--void-2);
+    flex-shrink: 0;
   }
-  .card {
-    background: #fffaf0;
-    border: 1px solid var(--line);
-    padding: 15px;
-    border-radius: 4px;
-    margin-bottom: 15px;
+
+  .mark {
+    font-size: 19px;
+    font-weight: 300;
+    letter-spacing: 0.04em;
+    font-style: italic;
   }
-  .form-group {
-    margin-bottom: 10px;
-  }
-  label {
-    display: block;
-    font-size: 12px;
-    font-weight: bold;
+  .mark b { font-weight: 500; font-style: normal; }
+
+  .creed {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.18em;
     text-transform: uppercase;
-    margin-bottom: 4px;
+    color: var(--ash);
   }
-  input, textarea {
-    width: 100%;
-    padding: 10px;
-    box-sizing: border-box;
-    border: 1px solid var(--ink);
-    border-radius: 4px;
-    font-size: 16px;
-    font-family: inherit;
+
+  #status {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ash-dim);
+    padding: 6px 26px 0;
+    flex-shrink: 0;
+    transition: color 0.6s;
   }
-  button {
-    width: 100%;
-    padding: 12px;
-    background: var(--ink);
-    color: var(--paper);
-    font-weight: bold;
-    border: 1px solid var(--ink);
-    border-radius: 4px;
-    font-size: 16px;
-    cursor: pointer;
-    margin-top: 5px;
+  #status .dot {
+    display: inline-block; width: 6px; height: 6px; border-radius: 50%;
+    background: var(--ash-dim); margin-right: 7px; vertical-align: middle;
+    transition: background 0.6s, box-shadow 0.6s;
   }
-  button.wax { background: var(--wax); border-color: var(--wax); }
-  .grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-    gap: 15px;
+  #status.alive .dot { background: var(--pulse); box-shadow: 0 0 8px var(--pulse); }
+  #status.alive { color: var(--ash); }
+
+  /* the surface — where things live while witnessed */
+  #surface {
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+    padding: 18px 26px;
+    display: flex;
+    flex-direction: column-reverse;
+    gap: 14px;
+    mask-image: linear-gradient(to top, #000 78%, transparent 100%);
   }
-  .item-card {
-    background: #ffffff;
-    border: 1px solid var(--line);
-    padding: 10px;
-    border-radius: 4px;
+
+  #empty {
+    position: absolute;
+    inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    flex-direction: column;
+    gap: 10px;
+    pointer-events: none;
     text-align: center;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
   }
-  .price { font-weight: bold; color: var(--wax); font-size: 18px; }
-  .pill {
-    font-family: monospace;
-    font-size: 11px;
-    background: #ece2d0;
-    padding: 8px;
-    word-break: break-all;
-    border-radius: 2px;
+  #empty .big {
+    font-size: 26px; font-weight: 300; font-style: italic; color: var(--ash-dim);
   }
-  #networkStatus {
-    font-size: 11px;
+  #empty .small {
+    font-family: 'JetBrains Mono', monospace; font-size: 10px;
+    letter-spacing: 0.16em; text-transform: uppercase; color: var(--ash-dim);
+  }
+
+  .block {
+    align-self: flex-start;
+    max-width: 90%;
+    animation: arrive 0.5s cubic-bezier(.2,.8,.2,1) both;
+    position: relative;
+  }
+  .block.mine { align-self: flex-end; text-align: right; }
+
+  .block .body {
+    font-size: 20px;
+    font-weight: 400;
+    line-height: 1.4;
+    color: var(--live);
+  }
+  .block .meta {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.1em;
     text-transform: uppercase;
-    font-weight: bold;
+    color: var(--ash-dim);
     margin-top: 5px;
   }
+  .block .meta .proven { color: var(--sign); }
+  .block .meta .proven::before { content: '✦ '; }
+  .block .meta .anon { color: var(--ash-dim); }
+  .block .meta .anon::before { content: '◌ '; }
+
+  /* the dying — a block fades from existence when its witnessing lapses */
+  .block.fading {
+    animation: dissolve 2.8s ease-in forwards;
+  }
+
+  @keyframes arrive {
+    from { opacity: 0; transform: translateY(8px); filter: blur(4px); }
+    to   { opacity: 1; transform: none; filter: blur(0); }
+  }
+  @keyframes dissolve {
+    0%   { opacity: 1; filter: blur(0); transform: none; }
+    100% { opacity: 0; filter: blur(6px); transform: translateY(-10px); letter-spacing: 0.2em; }
+  }
+
+  /* the act of placing */
+  footer {
+    flex-shrink: 0;
+    border-top: 1px solid var(--void-2);
+    padding: 14px 26px 20px;
+    background: linear-gradient(to top, var(--void) 60%, transparent);
+  }
+  .composer {
+    display: flex;
+    gap: 12px;
+    align-items: flex-end;
+  }
+  #write {
+    flex: 1;
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid var(--ash-dim);
+    color: var(--live);
+    font-family: 'Fraunces', serif;
+    font-size: 19px;
+    padding: 8px 2px;
+    resize: none;
+    outline: none;
+    max-height: 120px;
+    transition: border-color 0.4s;
+  }
+  #write:focus { border-color: var(--pulse-dim); }
+  #write::placeholder { color: var(--ash-dim); font-style: italic; }
+
+  .controls { display: flex; flex-direction: column; gap: 8px; align-items: flex-end; }
+
+  #signToggle {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ash);
+    background: transparent;
+    border: 1px solid var(--ash-dim);
+    border-radius: 20px;
+    padding: 5px 11px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.3s;
+  }
+  #signToggle.on { color: var(--sign); border-color: var(--sign); }
+
+  #place {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--void);
+    background: var(--live);
+    border: none;
+    border-radius: 20px;
+    padding: 9px 18px;
+    cursor: pointer;
+    transition: all 0.3s;
+    white-space: nowrap;
+  }
+  #place:disabled { background: var(--ash-dim); color: var(--void-2); cursor: default; }
+
+  /* share */
+  .share {
+    margin-top: 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .share .label {
+    font-family: 'JetBrains Mono', monospace; font-size: 9px;
+    letter-spacing: 0.12em; text-transform: uppercase; color: var(--ash-dim);
+    white-space: nowrap;
+  }
+  #shareLink {
+    flex: 1;
+    font-family: 'JetBrains Mono', monospace; font-size: 10px;
+    color: var(--ash);
+    background: var(--void-2);
+    border: none; border-radius: 4px;
+    padding: 7px 10px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    cursor: pointer;
+  }
+
+  /* witness count — the life-support readout */
+  #witnesses {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--pulse-dim);
+    text-align: center;
+    padding: 8px 0 0;
+  }
+  #witnesses b { color: var(--pulse); font-weight: 500; }
 </style>
 </head>
 <body>
 
 <header>
-  <h1>Sovereign Global Shop.</h1>
-  <p style="font-size:12px;color:#5a4d38;margin:0;">Real-time multi-device sync via open Nostr protocols</p>
-  <div id="networkStatus" style="color: var(--wax);">📴 Connecting to global relay network...</div>
+  <div class="mark"><b>witness</b></div>
+  <div class="creed">proven · and gone</div>
 </header>
 
-<div class="card" id="roleBox">Initializing cryptographic key sets...</div>
+<div id="status"><span class="dot"></span>opening the channel…</div>
 
-<!-- Enhanced Merchant Canvas Builder -->
-<div class="card" id="merchantPanel" style="display:none;">
-  <h3>✨ Design Shop Element</h3>
-
-  <div class="form-group">
-    <label>Product / Component Name</label>
-    <input type="text" id="pName" placeholder="e.g., Organic Sourdough Boule">
+<div id="surface">
+  <div id="empty">
+    <div class="big">nothing is here</div>
+    <div class="small">what is placed lives only while watched</div>
   </div>
-
-  <div class="form-group">
-    <label>Price ($)</label>
-    <input type="number" id="pPrice" placeholder="0.00" step="0.01">
-  </div>
-
-  <div class="form-group">
-    <label>Rich Text Description Block</label>
-    <textarea id="pDesc" rows="3" placeholder="Describe the ingredients, sizing, or details..."></textarea>
-  </div>
-
-  <div class="form-group">
-    <label>Product Display Image URL</label>
-    <input type="url" id="pImg" placeholder="https://images.unsplash.com/... or postimg.cc/...">
-  </div>
-
-  <div class="form-group">
-    <label>Stripe Payment Link / PayPal Username</label>
-    <input type="text" id="pPayLink" placeholder="https://buy.stripe.com/... or yourname">
-  </div>
-
-  <button id="btnSaveItem" class="wax">✍ Stamp Component to Global Catalog</button>
 </div>
 
-<h2>Live Catalog</h2>
-<div class="grid" id="catalogGrid"></div>
+<div id="witnesses"></div>
 
-<hr style="border:0; border-top:1px dashed var(--line); margin:20px 0;">
-
-<div class="card">
-  <h3>Your Multi-Device Share URL</h3>
-  <p style="font-size:11px; margin-bottom:8px;">Open this specific URL on any other phone or device. It will stream live updates immediately without local server software.</p>
-  <div class="pill" id="urlPill">Generating link...</div>
-  <button id="btnCopyLink" style="margin-top:10px;">📋 Copy Shop Share Link</button>
-</div>
+<footer>
+  <div class="composer">
+    <textarea id="write" rows="1" placeholder="say something into the room…"></textarea>
+    <div class="controls">
+      <button id="signToggle" title="Sign with this device's key — proves it was you, proves nothing about what.">◌ unsigned</button>
+      <button id="place" disabled>place</button>
+    </div>
+  </div>
+  <div class="share">
+    <span class="label">this room ↗</span>
+    <div id="shareLink" title="Tap to copy. Open on another device to witness together.">generating…</div>
+  </div>
+</footer>
 
 <script type="module">
-// Standard open public Nostr relays used to route the encrypted payloads for free
-const PUBLIC_RELAYS = ["wss://relay.damus.io", "wss://nos.lol", "wss://relay.nostr.band"];
-let socket = null;
+const RELAYS = ["wss://relay.damus.io", "wss://nos.lol", "wss://relay.nostr.band"];
+const KIND = 22242;
+const WITNESS_TTL = 14000;        // a block lives this long after it's last witnessed/refreshed
+const HEARTBEAT = 4000;           // how often witnesses announce "still here"
+const PRESENCE_TTL = 11000;       // a witness is counted present for this long after last beat
 
-// Cryptographic helpers adapted from seal.html
 const enc = new TextEncoder(), dec = new TextDecoder();
 const b64 = b => btoa(String.fromCharCode(...new Uint8Array(b))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
 const unb64 = s => { s=s.replace(/-/g,'+').replace(/_/g,'/'); return Uint8Array.from(atob(s),c=>c.charCodeAt(0)); };
+const rid = (n=12) => b64(crypto.getRandomValues(new Uint8Array(n)));
 
-async function makeStamp() {
-  return crypto.subtle.generateKey({name:'ECDSA',namedCurve:'P-256'},true,['sign','verify']);
+// ---- identity (optional proof) ----
+let signing = false;
+let keys = null, myPubRaw = null;
+async function ensureKeys() {
+  if (keys) return;
+  keys = await crypto.subtle.generateKey({name:'ECDSA',namedCurve:'P-256'}, true, ['sign','verify']);
+  myPubRaw = b64(await crypto.subtle.exportKey('raw', keys.publicKey));
 }
-async function exportPub(key){ return b64(await crypto.subtle.exportKey('raw',key)); }
-async function exportPriv(key){ return b64(await crypto.subtle.exportKey('pkcs8',key)); }
-async function importPub(raw){
-  return crypto.subtle.importKey('raw', unb64(raw), {name:'ECDSA',namedCurve:'P-256'}, true, ['verify']);
-}
-
-// Sign / verify the canonical fields of an item so only the master stamp holder can post.
-function canonical(item){
-  return JSON.stringify({
-    id: item.id, name: item.name, price: item.price,
-    desc: item.desc || '', img: item.img || '',
-    payLink: item.payLink || '', clk: item.clk
-  });
-}
-async function signItem(privKey, item){
-  const sig = await crypto.subtle.sign(
-    {name:'ECDSA', hash:'SHA-256'}, privKey, enc.encode(canonical(item)));
+async function sign(text, ts) {
+  const sig = await crypto.subtle.sign({name:'ECDSA',hash:'SHA-256'}, keys.privateKey, enc.encode(text + '|' + ts));
   return b64(sig);
 }
-async function verifyItem(pubKey, item){
-  if(!item.sig) return false;
+async function verify(pubRaw, text, ts, sig) {
   try {
-    return await crypto.subtle.verify(
-      {name:'ECDSA', hash:'SHA-256'}, pubKey, unb64(item.sig), enc.encode(canonical(item)));
+    const pk = await crypto.subtle.importKey('raw', unb64(pubRaw), {name:'ECDSA',namedCurve:'P-256'}, true, ['verify']);
+    return await crypto.subtle.verify({name:'ECDSA',hash:'SHA-256'}, pk, unb64(sig), enc.encode(text + '|' + ts));
   } catch { return false; }
 }
 
-const Catalog = {
-  items: new Map(),
-  shopPubKey: null, // imported once at boot, used to validate every incoming item
+// ---- room ----
+let ROOM = location.hash.slice(1);
+if (!ROOM) { ROOM = rid(9); location.hash = ROOM; }
+const myId = rid(6);
 
-  async addSignedItem(item) {
-    // Reject anything that isn't validly signed by the shop's master stamp.
-    if (this.shopPubKey) {
-      const valid = await verifyItem(this.shopPubKey, item);
-      if (!valid) {
-        console.warn('Dropped item with invalid/missing signature:', item.id);
-        return;
-      }
-    }
+// ---- the surface: blocks live only while witnessed ----
+const surface = document.getElementById('surface');
+const emptyEl = document.getElementById('empty');
+const live = new Map(); // id -> { el, expires }
 
-    // If we receive an older sequence clock version, drop it to mitigate rollback strategies
-    const existing = this.items.get(item.id);
-    if (existing && existing.clk >= item.clk) return;
-
-    this.items.set(item.id, item);
-    this.render();
-  },
-
-  render() {
-    const grid = document.getElementById('catalogGrid');
-    grid.innerHTML = '';
-    if (this.items.size === 0) {
-      grid.innerHTML = '<p style="color:#857452; font-style:italic;">No items broadcasted yet.</p>';
-      return;
-    }
-
-    const safe = (s) => String(s ?? '').replace(/[&<>"']/g, c =>
-      ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
-
-    for (const item of this.items.values()) {
-      const el = document.createElement('div');
-      el.className = 'item-card';
-
-      // Image (only if provided and a valid http/https URL)
-      let imgHTML = '';
-      if (item.img && /^https?:\/\//i.test(item.img)) {
-        imgHTML = `<img src="${safe(item.img)}" alt="${safe(item.name)}"
-          style="width:100%; height:110px; object-fit:cover; border-radius:3px; margin-bottom:8px;"
-          onerror="this.style.display='none'">`;
-      }
-
-      // Description
-      const descHTML = item.desc
-        ? `<div style="font-size:11px; color:#5a4d38; margin:6px 0; line-height:1.3;">${safe(item.desc)}</div>`
-        : '';
-
-      // Buy button — normalize bare PayPal usernames into full links
-      let buyHTML = '';
-      if (item.payLink) {
-        let href = item.payLink.trim();
-        if (!/^https?:\/\//i.test(href)) {
-          href = `https://www.paypal.me/${encodeURIComponent(href.replace(/^@/, ''))}`;
-        }
-        buyHTML = `<a href="${safe(href)}" target="_blank" rel="noopener noreferrer"
-          style="display:block; margin-top:8px; padding:8px; background:var(--ok); color:var(--paper);
-          text-decoration:none; border-radius:4px; font-weight:bold; font-size:13px;">Buy Now →</a>`;
-      }
-
-      el.innerHTML = `
-        ${imgHTML}
-        <div style="font-weight:bold; font-size:15px;">${safe(item.name)}</div>
-        <div class="price">$${parseFloat(item.price).toFixed(2)}</div>
-        ${descHTML}
-        <div style="font-size:9px; color:#857452; margin-top:5px;">Sequence: v.${item.clk}</div>
-        ${buyHTML}
-      `;
-      grid.appendChild(el);
-    }
-  }
-};
-
-let SHOP = null;
-let ME = { clk: 0 };
-
-async function boot() {
-  const frag = location.hash.slice(1);
-
-  if (!frag) {
-    // Generate a new, unique room and cryptographic identity
-    const room = b64(crypto.getRandomValues(new Uint8Array(9)));
-    const stamp = await makeStamp();
-    const pubRaw = await exportPub(stamp.publicKey);
-    const privRaw = await exportPriv(stamp.privateKey);
-
-    sessionStorage.setItem('shop_stamp:' + room, privRaw);
-    location.hash = `${room}.${pubRaw}`;
-
-    SHOP = { room, pubRaw, isOwner: true, privKey: stamp.privateKey };
-  } else {
-    const [room, pubRaw] = frag.split('.');
-    SHOP = { room, pubRaw, isOwner: false };
-
-    const stash = sessionStorage.getItem('shop_stamp:' + room);
-    if (stash) {
-      SHOP.privKey = await crypto.subtle.importKey('pkcs8', unb64(stash), {name:'ECDSA',namedCurve:'P-256'}, true, ['sign']);
-      SHOP.isOwner = true;
-    }
-  }
-
-  // Import the shop's public stamp so customers can verify every item locally.
-  try {
-    Catalog.shopPubKey = await importPub(SHOP.pubRaw);
-  } catch (e) {
-    console.error('Could not import shop public key from URL:', e);
-  }
-
-  renderInterface();
-  connectToMesh();
+function refreshEmpty() {
+  emptyEl.style.display = live.size ? 'none' : 'flex';
 }
 
-function renderInterface() {
-  document.getElementById('urlPill').textContent = window.location.href;
-  if (SHOP.isOwner) {
-    document.getElementById('roleBox').innerHTML = `<b style="color:var(--wax)">✦ MERCHANT CONTROLLER</b> — This phone holds the private cryptographic master stamp.`;
-    document.getElementById('merchantPanel').style.display = 'block';
-  } else {
-    document.getElementById('roleBox').innerHTML = `<b style="color:var(--ok)">◇ LIVE CUSTOMER VIEW</b> — Validating inventory signatures peer-to-peer via URL public parameters.`;
-    document.getElementById('merchantPanel').style.display = 'none';
+function place(block, mine) {
+  if (live.has(block.id)) { // re-witnessed: extend its life
+    const rec = live.get(block.id);
+    rec.expires = Date.now() + WITNESS_TTL;
+    rec.el.classList.remove('fading');
+    return;
   }
-  Catalog.render();
+  const el = document.createElement('div');
+  el.className = 'block' + (mine ? ' mine' : '');
+  const proof = block.sig
+    ? `<span class="proven">proven · ${block.pub.slice(0,8)}</span>`
+    : `<span class="anon">unsigned</span>`;
+  el.innerHTML = `<div class="body"></div><div class="meta">${proof}</div>`;
+  el.querySelector('.body').textContent = block.text;
+  surface.appendChild(el);
+  live.set(block.id, { el, expires: Date.now() + WITNESS_TTL });
+  refreshEmpty();
 }
 
-// Global Sync Pipeline (Nostr Integration)
-function connectToMesh() {
-  // Use a fallback random pick among public relays
-  const selectedRelay = PUBLIC_RELAYS[Math.floor(Math.random() * PUBLIC_RELAYS.length)];
-  socket = new WebSocket(selectedRelay);
+// the reaper: nothing is deleted — it simply stops being held
+setInterval(() => {
+  const now = Date.now();
+  for (const [id, rec] of live) {
+    if (now > rec.expires && !rec.el.classList.contains('fading')) {
+      rec.el.classList.add('fading');
+      setTimeout(() => { rec.el.remove(); live.delete(id); refreshEmpty(); }, 2800);
+    }
+  }
+}, 1000);
 
-  socket.onopen = () => {
-    document.getElementById('networkStatus').textContent = `🌐 Connected to Relay: ${selectedRelay}`;
-    document.getElementById('networkStatus').style.color = "var(--ok)";
+// ---- the channel ----
+let sock = null, ready = false;
+const statusEl = document.getElementById('status');
+function setStatus(text, alive) {
+  statusEl.querySelector('.dot');
+  statusEl.childNodes[1].nodeValue = ' ' + text;
+  statusEl.classList.toggle('alive', !!alive);
+}
 
-    // Subscribe to this room identifier channel on the relay network
-    const subscriptionFilter = [
-      "REQ",
-      SHOP.room,
-      {
-        kinds: [22242], // Ephemeral generic custom data kind
-        "#t": [SHOP.room]
-      }
-    ];
-    socket.send(JSON.stringify(subscriptionFilter));
+function connect() {
+  const relay = RELAYS[Math.floor(Math.random()*RELAYS.length)];
+  setStatus('reaching ' + relay.replace('wss://','') + '…', false);
+  sock = new WebSocket(relay);
+
+  sock.onopen = () => {
+    ready = true;
+    setStatus('the room is open · ' + relay.replace('wss://',''), true);
+    sock.send(JSON.stringify(["REQ", ROOM, { kinds:[KIND], "#t":[ROOM] }]));
+    beat(); // announce presence immediately
   };
 
-  socket.onmessage = async (e) => {
-    const data = JSON.parse(e.data);
-    if (data[0] === "EVENT" && data[2]) {
-      const event = data[2];
-      try {
-        // Parse the underlying inventory catalog data block out of the raw stream
-        const incomingPayload = JSON.parse(event.content);
-        await Catalog.addSignedItem(incomingPayload);
-      } catch (err) {
-        console.error("Failed handling mesh telemetry frame:", err);
-      }
+  sock.onmessage = async (e) => {
+    let msg; try { msg = JSON.parse(e.data); } catch { return; }
+    if (msg[0] !== "EVENT" || !msg[2]) return;
+    let p; try { p = JSON.parse(msg[2].content); } catch { return; }
+
+    if (p.kind === 'beat') { seePresence(p.who); return; }
+    if (p.kind === 'block') {
+      let ok = true;
+      if (p.sig) ok = await verify(p.pub, p.text, p.ts, p.sig);
+      if (!ok) return; // a claimed proof that doesn't hold is dropped
+      place(p, p.who === myId);
     }
   };
 
-  socket.onclose = () => {
-    document.getElementById('networkStatus').textContent = "📴 Lost link connection. Retrying pipeline socket...";
-    document.getElementById('networkStatus').style.color = "var(--wax)";
-    setTimeout(connectToMesh, 5000);
+  sock.onclose = () => {
+    ready = false;
+    setStatus('the link slipped · reaching back…', false);
+    setTimeout(connect, 3000);
   };
 }
 
-// Generate & Broadcast signed state changes
-document.getElementById('btnSaveItem').onclick = async () => {
-  const name = document.getElementById('pName').value;
-  const price = document.getElementById('pPrice').value;
-  if (!name || !price) return alert('Enter name and price first!');
-  if (!SHOP.privKey) return alert('This device does not hold the master stamp.');
+function emit(payload) {
+  if (!ready || sock.readyState !== WebSocket.OPEN) return;
+  sock.send(JSON.stringify(["EVENT", {
+    id: rid(16), pubkey: myPubRaw || 'anon',
+    created_at: Math.floor(Date.now()/1000), kind: KIND,
+    tags: [["t", ROOM]], content: JSON.stringify(payload), sig: "x"
+  }]));
+}
 
-  ME.clk++;
-  const itemID = 'prod_' + Math.random().toString(36).slice(2,6);
+// ---- presence: witnesses keep each other (and the blocks) alive ----
+const present = new Map(); // who -> lastSeen
+const witnessEl = document.getElementById('witnesses');
+function seePresence(who) { present.set(who, Date.now()); }
+function renderWitnesses() {
+  const now = Date.now();
+  for (const [who, t] of present) if (now - t > PRESENCE_TTL) present.delete(who);
+  const n = present.size + 1; // +1 = me
+  witnessEl.innerHTML = n === 1
+    ? `you are the only one here · what you place will not outlast your looking`
+    : `<b>${n}</b> witnessing · the room is held by those who watch it`;
+}
+function beat() { emit({ kind:'beat', who: myId }); }
+setInterval(beat, HEARTBEAT);
+setInterval(renderWitnesses, 1000);
+renderWitnesses();
 
-  const itemPayload = {
-    id: itemID,
-    name: name,
-    price: price,
-    desc: document.getElementById('pDesc').value,
-    img: document.getElementById('pImg').value,
-    payLink: document.getElementById('pPayLink').value,
-    clk: ME.clk
-  };
-
-  // Sign the canonical payload with the master stamp before anything else.
-  itemPayload.sig = await signItem(SHOP.privKey, itemPayload);
-
-  // 1. Update our phone's storage cache instantly
-  await Catalog.addSignedItem(itemPayload);
-
-  // 2. Wrap and transmit data envelope through the Nostr relay mesh
-  if (socket && socket.readyState === WebSocket.OPEN) {
-    const nostrEnvelope = [
-      "EVENT",
-      {
-        id: b64(crypto.getRandomValues(new Uint8Array(16))), // Random identifier token
-        pubkey: SHOP.pubRaw,
-        created_at: Math.floor(Date.now() / 1000),
-        kind: 22242,
-        tags: [["t", SHOP.room]],
-        content: JSON.stringify(itemPayload),
-        sig: "simulated_sig" // Nostr envelope sig (transport); item.sig carries the real ECDSA proof
-      }
-    ];
-    socket.send(JSON.stringify(nostrEnvelope));
+// being watched keeps blocks alive: every beat I receive refreshes nothing automatically,
+// but my own continued presence refreshes my view's blocks (they're mine to hold)
+setInterval(() => {
+  // as long as I'm here AND someone is here, blocks I can see get their life extended
+  if (present.size > 0) {
+    for (const rec of live.values()) rec.expires = Math.max(rec.expires, Date.now() + 4000);
   }
+}, 3000);
 
-  document.getElementById('pName').value = '';
-  document.getElementById('pPrice').value = '';
-  document.getElementById('pDesc').value = '';
-  document.getElementById('pImg').value = '';
-  document.getElementById('pPayLink').value = '';
+// ---- placing a block ----
+const write = document.getElementById('write');
+const placeBtn = document.getElementById('place');
+const signBtn = document.getElementById('signToggle');
+
+write.addEventListener('input', () => {
+  placeBtn.disabled = !write.value.trim();
+  write.style.height = 'auto';
+  write.style.height = Math.min(write.scrollHeight, 120) + 'px';
+});
+write.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); doPlace(); }
+});
+
+signBtn.onclick = async () => {
+  signing = !signing;
+  if (signing) await ensureKeys();
+  signBtn.classList.toggle('on', signing);
+  signBtn.textContent = signing ? '✦ signing' : '◌ unsigned';
 };
 
-document.getElementById('btnCopyLink').onclick = () => {
-  navigator.clipboard.writeText(window.location.href);
-  alert('Link copied to clipboard! Send it to another device to test.');
+async function doPlace() {
+  const text = write.value.trim();
+  if (!text || !ready) return;
+  const ts = Date.now();
+  const block = { kind:'block', id: rid(8), who: myId, text, ts, sig: null, pub: null };
+  if (signing) {
+    await ensureKeys();
+    block.sig = await sign(text, ts);
+    block.pub = myPubRaw;
+  }
+  place(block, true);   // I witness my own immediately
+  emit(block);          // and breathe it into the room
+  write.value = '';
+  write.style.height = 'auto';
+  placeBtn.disabled = true;
+}
+placeBtn.onclick = doPlace;
+
+// ---- share ----
+const shareEl = document.getElementById('shareLink');
+shareEl.textContent = location.href;
+shareEl.onclick = async () => {
+  try { await navigator.clipboard.writeText(location.href);
+    const old = shareEl.textContent; shareEl.textContent = 'copied — open it elsewhere to witness together';
+    setTimeout(()=> shareEl.textContent = old, 1800);
+  } catch {}
 };
 
-boot();
+connect();
 </script>
 </body>
 </html>
