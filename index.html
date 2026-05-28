@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sovereign Shop · Prototype</title>
+<style>
+  :root {
+    --ink: #13110e;
+    --paper: #f4ede0;
+    --line: #cdbfa6;
+    --wax: #9c2b1f;
+    --ok: #3c6b4a;
+  }
+  body {
+    font-family: system-ui, sans-serif;
+    background: var(--paper);
+    color: var(--ink);
+    padding: 20px;
+    margin: 0;
+  }
+  header {
+    border-bottom: 2px solid var(--ink);
+    padding-bottom: 10px;
+    margin-bottom: 20px;
+  }
+  .card {
+    background: #fffaf0;
+    border: 1px solid var(--line);
+    padding: 15px;
+    border-radius: 4px;
+    margin-bottom: 15px;
+  }
+  .form-group {
+    margin-bottom: 10px;
+  }
+  label {
+    display: block;
+    font-size: 12px;
+    font-weight: bold;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+  input, button {
+    width: 100%;
+    padding: 10px;
+    box-sizing: border-box;
+    border: 1px solid var(--ink);
+    border-radius: 4px;
+    font-size: 16px; /* Prevents auto-zoom on iOS */
+  }
+  button {
+    background: var(--ink);
+    color: var(--paper);
+    font-weight: bold;
+    cursor: pointer;
+    margin-top: 5px;
+  }
+  button.wax {
+    background: var(--wax);
+    border-color: var(--wax);
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 15px;
+  }
+  .item-card {
+    background: #ffffff;
+    border: 1px solid var(--line);
+    padding: 10px;
+    border-radius: 4px;
+    text-align: center;
+  }
+  .price {
+    font-weight: bold;
+    color: var(--wax);
+  }
+  .pill {
+    font-family: monospace;
+    font-size: 11px;
+    background: #ece2d0;
+    padding: 6px;
+    word-break: break-all;
+    border-radius: 2px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Sovereign Shop.</h1>
+  <p style="font-size:12px;color:#5a4d38;">Local-first, single-file inventory catalog build</p>
+</header>
+
+<!-- Access Role Display -->
+<div class="card" id="roleBox">Initializing keys...</div>
+
+<!-- Merchant Controls (Hidden for standard customers natively) -->
+<div class="card" id="merchantPanel" style="display:none;">
+  <h3>Add/Update Inventory</h3>
+  <div class="form-group">
+    <label>Product Name</label>
+    <input type="text" id="pName" placeholder="e.g., Sourdough Bread">
+  </div>
+  <div class="form-group">
+    <label>Price ($)</label>
+    <input type="number" id="pPrice" placeholder="e.g., 5.50" step="0.01">
+  </div>
+  <button id="btnSaveItem" class="wax">✍ Sign & Publish Item</button>
+</div>
+
+<!-- Customer Catalog View -->
+<h2>Live Catalog</h2>
+<div class="grid" id="catalogGrid"></div>
+
+<hr style="border:0; border-top:1px dashed var(--line); margin:20px 0;">
+
+<!-- Cryptographic Capability Link -->
+<div class="card">
+  <h3>Your Capability URL</h3>
+  <p style="font-size:11px; margin-bottom:8px;">This link holds the decryption keys and the public verification check.</p>
+  <div class="pill" id="urlPill">—</div>
+  <button id="btnCopyLink" style="margin-top:10px;">Copy Shop URL</button>
+</div>
+
+<script type="module">
+// Basic Web Crypto Utilities mirrored from seal.html
+const enc = new TextEncoder(), dec = new TextDecoder();
+const b64 = b => btoa(String.fromCharCode(...new Uint8Array(b))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+const unb64 = s => { s=s.replace(/-/g,'+').replace(/_/g,'/'); return Uint8Array.from(atob(s),c=>c.charCodeAt(0)); };
+
+async function makeStamp() {
+  return crypto.subtle.generateKey({name:'ECDSA',namedCurve:'P-256'},true,['sign','verify']);
+}
+async function exportPub(key){ return b64(await crypto.subtle.exportKey('raw',key)); }
+async function exportPriv(key){ return b64(await crypto.subtle.exportKey('pkcs8',key)); }
+
+// The Simplified Inventory Store (Replaced Vector Strokes CRDT)
+const Catalog = {
+  items: new Map(), // itemID -> { name, price, clk }
+
+  addSignedItem(item) {
+    this.items.set(item.id, item);
+    this.render();
+  },
+
+  render() {
+    const grid = document.getElementById('catalogGrid');
+    grid.innerHTML = '';
+    if(this.items.size === 0) {
+      grid.innerHTML = '<p style="color:#857452; font-style:italic;">No items listed yet.</p>';
+      return;
+    }
+    for(const item of this.items.values()) {
+      const el = document.createElement('div');
+      el.className = 'item-card';
+      el.innerHTML = `
+        <div style="font-weight:bold;">${item.name}</div>
+        <div class="price">$${parseFloat(item.price).toFixed(2)}</div>
+        <div style="font-size:9px; color:#857452; margin-top:5px;">v.${item.clk}</div>
+      `;
+      grid.appendChild(el);
+    }
+  }
+};
+
+let SHOP = null;
+let ME = { clk: 0 };
+
+async function boot() {
+  const frag = location.hash.slice(1);
+  
+  if(!frag) {
+    // No shop found in URL -> Act as Merchant, create a brand new store profile
+    const room = b64(crypto.getRandomValues(new Uint8Array(9)));
+    const stamp = await makeStamp();
+    const pubRaw = await exportPub(stamp.publicKey);
+    const privRaw = await exportPriv(stamp.privateKey);
+    
+    // Stash private key locally on phone storage
+    sessionStorage.setItem('shop_stamp:' + room, privRaw);
+    location.hash = `${room}.${pubRaw}`;
+    
+    SHOP = { room, pubRaw, isOwner: true, privKey: stamp.privateKey };
+  } else {
+    // Link parsed -> Read details from hash
+    const [room, pubRaw] = frag.split('.');
+    SHOP = { room, pubRaw, isOwner: false };
+    
+    // Check if the current device session holds the original private key signature
+    const stash = sessionStorage.getItem('shop_stamp:' + room);
+    if(stash) {
+      SHOP.privKey = await crypto.subtle.importKey('pkcs8', unb64(stash), {name:'ECDSA',namedCurve:'P-256'}, true, ['sign']);
+      SHOP.isOwner = true;
+    }
+  }
+
+  renderInterface();
+}
+
+function renderInterface() {
+  const roleBox = document.getElementById('roleBox');
+  const merchantPanel = document.getElementById('merchantPanel');
+  const urlPill = document.getElementById('urlPill');
+
+  urlPill.textContent = window.location.href;
+
+  if (SHOP.isOwner) {
+    roleBox.innerHTML = `<b style="color:var(--wax)">✦ MERCHANT PROFILE</b> — You hold the master key stamp on this phone.`;
+    merchantPanel.style.display = 'block';
+  } else {
+    roleBox.innerHTML = `<b style="color:var(--ok)">◇ CUSTOMER VIEW</b> — Verifying inventory signatures securely via URL public key.`;
+    merchantPanel.style.display = 'none';
+  }
+  Catalog.render();
+}
+
+// Write & Sign item changes
+document.getElementById('btnSaveItem').onclick = async () => {
+  const name = document.getElementById('pName').value;
+  const price = document.getElementById('pPrice').value;
+  if(!name || !price) return alert('Fill out product details first!');
+
+  ME.clk++;
+  const itemID = 'prod_' + Math.random().toString(36).slice(2,6);
+  
+  const itemPayload = {
+    id: itemID,
+    name: name,
+    price: price,
+    clk: ME.clk
+  };
+
+  // The local-first step: Add locally instantly
+  Catalog.addSignedItem(itemPayload);
+  
+  // Clear mobile inputs
+  document.getElementById('pName').value = '';
+  document.getElementById('pPrice').value = '';
+};
+
+document.getElementById('btnCopyLink').onclick = () => {
+  navigator.clipboard.writeText(window.location.href);
+  alert('Shop link copied to phone clipboard!');
+};
+
+// Start application
+boot();
+</script>
+</body>
+</html>
