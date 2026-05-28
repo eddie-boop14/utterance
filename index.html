@@ -7,378 +7,254 @@
 <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500&family=JetBrains+Mono:wght@400;500&display=swap');
-
-  :root {
-    --void: #0a0a0c;
-    --void-2: #121216;
-    --ash: #6b6b78;
-    --ash-dim: #3a3a44;
-    --live: #e8e6df;
-    --pulse: #7fd9c4;
-    --pulse-dim: #3a6b60;
-    --sign: #c9a86b;
-  }
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  html, body { height: 100%; overflow: hidden; }
-  body {
-    background: radial-gradient(ellipse 80% 60% at 50% 0%, #15151b 0%, transparent 70%), var(--void);
-    color: var(--live);
-    font-family: 'Fraunces', serif;
-    height: 100vh; display: flex; flex-direction: column; position: relative;
-  }
-  body::after {
-    content: ''; position: fixed; inset: 0; pointer-events: none; opacity: 0.035;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-    z-index: 999;
-  }
-  header {
-    padding: 22px 26px 14px; display: flex; align-items: baseline;
-    justify-content: space-between; border-bottom: 1px solid var(--void-2); flex-shrink: 0;
-  }
-  .mark { font-size: 19px; font-weight: 300; letter-spacing: 0.04em; font-style: italic; }
-  .mark b { font-weight: 500; font-style: normal; }
-  .creed {
-    font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.18em;
-    text-transform: uppercase; color: var(--ash);
-  }
-  #status {
-    font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.12em;
-    text-transform: uppercase; color: var(--ash-dim); padding: 6px 26px 0; flex-shrink: 0;
-    transition: color 0.6s;
-  }
-  #status .dot {
-    display: inline-block; width: 6px; height: 6px; border-radius: 50%;
-    background: var(--ash-dim); margin-right: 7px; vertical-align: middle;
-    transition: background 0.6s, box-shadow 0.6s;
-  }
-  #status.alive .dot { background: var(--pulse); box-shadow: 0 0 8px var(--pulse); }
-  #status.alive { color: var(--ash); }
-  #surface {
-    flex: 1; overflow: hidden; position: relative; padding: 18px 26px;
-    display: flex; flex-direction: column-reverse; gap: 14px;
-    mask-image: linear-gradient(to top, #000 78%, transparent 100%);
-  }
-  #empty {
-    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
-    flex-direction: column; gap: 10px; pointer-events: none; text-align: center;
-  }
-  #empty .big { font-size: 26px; font-weight: 300; font-style: italic; color: var(--ash-dim); }
-  #empty .small {
-    font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.16em;
-    text-transform: uppercase; color: var(--ash-dim);
-  }
-  .block { align-self: flex-start; max-width: 90%; animation: arrive 0.5s cubic-bezier(.2,.8,.2,1) both; position: relative; }
-  .block.mine { align-self: flex-end; text-align: right; }
-  .block .body { font-size: 20px; font-weight: 400; line-height: 1.4; color: var(--live); }
-  .block .meta {
-    font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: 0.1em;
-    text-transform: uppercase; color: var(--ash-dim); margin-top: 5px;
-  }
-  .block .meta .proven { color: var(--sign); }
-  .block .meta .proven::before { content: '✦ '; }
-  .block .meta .anon { color: var(--ash-dim); }
-  .block .meta .anon::before { content: '◌ '; }
-  .block.fading { animation: dissolve 2.8s ease-in forwards; }
-  @keyframes arrive {
-    from { opacity: 0; transform: translateY(8px); filter: blur(4px); }
-    to   { opacity: 1; transform: none; filter: blur(0); }
-  }
-  @keyframes dissolve {
-    0%   { opacity: 1; filter: blur(0); transform: none; }
-    100% { opacity: 0; filter: blur(6px); transform: translateY(-10px); letter-spacing: 0.2em; }
-  }
-  footer {
-    flex-shrink: 0; border-top: 1px solid var(--void-2); padding: 14px 26px 20px;
-    background: linear-gradient(to top, var(--void) 60%, transparent);
-  }
-  .composer { display: flex; gap: 12px; align-items: flex-end; }
-  #write {
-    flex: 1; background: transparent; border: none; border-bottom: 1px solid var(--ash-dim);
-    color: var(--live); font-family: 'Fraunces', serif; font-size: 19px; padding: 8px 2px;
-    resize: none; outline: none; max-height: 120px; transition: border-color 0.4s;
-  }
-  #write:focus { border-color: var(--pulse-dim); }
-  #write::placeholder { color: var(--ash-dim); font-style: italic; }
-  .controls { display: flex; flex-direction: column; gap: 8px; align-items: flex-end; }
-  #signToggle {
-    font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: 0.12em;
-    text-transform: uppercase; color: var(--ash); background: transparent;
-    border: 1px solid var(--ash-dim); border-radius: 20px; padding: 5px 11px;
-    cursor: pointer; white-space: nowrap; transition: all 0.3s;
-  }
-  #signToggle.on { color: var(--sign); border-color: var(--sign); }
-  #place {
-    font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.14em;
-    text-transform: uppercase; color: var(--void); background: var(--live); border: none;
-    border-radius: 20px; padding: 9px 18px; cursor: pointer; transition: all 0.3s; white-space: nowrap;
-  }
-  #place:disabled { background: var(--ash-dim); color: var(--void-2); cursor: default; }
-  .share { margin-top: 12px; display: flex; align-items: center; gap: 10px; }
-  .share .label {
-    font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: 0.12em;
-    text-transform: uppercase; color: var(--ash-dim); white-space: nowrap;
-  }
-  #shareLink {
-    flex: 1; font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--ash);
-    background: var(--void-2); border: none; border-radius: 4px; padding: 7px 10px;
-    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer;
-  }
-  #witnesses {
-    font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.1em;
-    text-transform: uppercase; color: var(--pulse-dim); text-align: center; padding: 8px 0 0;
-  }
-  #witnesses b { color: var(--pulse); font-weight: 500; }
+  :root{--void:#0a0a0c;--void-2:#121216;--ash:#6b6b78;--ash-dim:#3a3a44;--live:#e8e6df;--pulse:#7fd9c4;--pulse-dim:#3a6b60;--sign:#c9a86b;}
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html,body{height:100%;overflow:hidden;}
+  body{background:radial-gradient(ellipse 80% 60% at 50% 0%,#15151b 0%,transparent 70%),var(--void);color:var(--live);font-family:'Fraunces',serif;height:100vh;display:flex;flex-direction:column;position:relative;}
+  body::after{content:'';position:fixed;inset:0;pointer-events:none;opacity:.035;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");z-index:999;}
+  header{padding:22px 26px 14px;display:flex;align-items:baseline;justify-content:space-between;border-bottom:1px solid var(--void-2);flex-shrink:0;}
+  .mark{font-size:19px;font-weight:300;letter-spacing:.04em;font-style:italic;}
+  .mark b{font-weight:500;font-style:normal;}
+  .creed{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--ash);}
+  #status{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--ash-dim);padding:6px 26px 0;flex-shrink:0;transition:color .6s;}
+  #status .dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--ash-dim);margin-right:7px;vertical-align:middle;transition:background .6s,box-shadow .6s;}
+  #status.alive .dot{background:var(--pulse);box-shadow:0 0 8px var(--pulse);}
+  #status.alive{color:var(--ash);}
+  #surface{flex:1;overflow:hidden;position:relative;padding:18px 26px;display:flex;flex-direction:column-reverse;gap:14px;mask-image:linear-gradient(to top,#000 78%,transparent 100%);}
+  #empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px;pointer-events:none;text-align:center;}
+  #empty .big{font-size:26px;font-weight:300;font-style:italic;color:var(--ash-dim);}
+  #empty .small{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--ash-dim);}
+  .block{align-self:flex-start;max-width:90%;animation:arrive .5s cubic-bezier(.2,.8,.2,1) both;position:relative;}
+  .block.mine{align-self:flex-end;text-align:right;}
+  .block .body{font-size:20px;font-weight:400;line-height:1.4;color:var(--live);}
+  .block .meta{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--ash-dim);margin-top:5px;}
+  .block .meta .proven{color:var(--sign);}
+  .block .meta .proven::before{content:'\2726 ';}
+  .block .meta .anon{color:var(--ash-dim);}
+  .block .meta .anon::before{content:'\25CC ';}
+  .block.fading{animation:dissolve 2.8s ease-in forwards;}
+  @keyframes arrive{from{opacity:0;transform:translateY(8px);filter:blur(4px);}to{opacity:1;transform:none;filter:blur(0);}}
+  @keyframes dissolve{0%{opacity:1;filter:blur(0);transform:none;}100%{opacity:0;filter:blur(6px);transform:translateY(-10px);letter-spacing:.2em;}}
+  footer{flex-shrink:0;border-top:1px solid var(--void-2);padding:14px 26px 20px;background:linear-gradient(to top,var(--void) 60%,transparent);}
+  .composer{display:flex;gap:12px;align-items:flex-end;}
+  #write{flex:1;background:transparent;border:none;border-bottom:1px solid var(--ash-dim);color:var(--live);font-family:'Fraunces',serif;font-size:19px;padding:8px 2px;resize:none;outline:none;max-height:120px;transition:border-color .4s;}
+  #write:focus{border-color:var(--pulse-dim);}
+  #write::placeholder{color:var(--ash-dim);font-style:italic;}
+  .controls{display:flex;flex-direction:column;gap:8px;align-items:flex-end;}
+  #signToggle{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--ash);background:transparent;border:1px solid var(--ash-dim);border-radius:20px;padding:5px 11px;cursor:pointer;white-space:nowrap;transition:all .3s;}
+  #signToggle.on{color:var(--sign);border-color:var(--sign);}
+  #place{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--void);background:var(--live);border:none;border-radius:20px;padding:9px 18px;cursor:pointer;transition:all .3s;white-space:nowrap;}
+  #place:disabled{background:var(--ash-dim);color:var(--void-2);cursor:default;}
+  .share{margin-top:12px;display:flex;align-items:center;gap:10px;}
+  .share .label{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--ash-dim);white-space:nowrap;}
+  #shareLink{flex:1;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--ash);background:var(--void-2);border:none;border-radius:4px;padding:7px 10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;}
+  #witnesses{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--pulse-dim);text-align:center;padding:8px 0 0;}
+  #witnesses b{color:var(--pulse);font-weight:500;}
 </style>
 </head>
 <body>
-
 <header>
   <div class="mark"><b>witness</b></div>
-  <div class="creed">proven · and gone</div>
+  <div class="creed">proven &middot; and gone</div>
 </header>
-
-<div id="status"><span class="dot"></span>opening the channel…</div>
-
+<div id="status"><span class="dot"></span>opening the channel&hellip;</div>
 <div id="surface">
   <div id="empty">
     <div class="big">nothing is here</div>
     <div class="small">what is placed lives only while watched</div>
   </div>
 </div>
-
 <div id="witnesses"></div>
-
 <footer>
   <div class="composer">
-    <textarea id="write" rows="1" placeholder="say something into the room…"></textarea>
+    <textarea id="write" rows="1" placeholder="say something into the room&hellip;"></textarea>
     <div class="controls">
-      <button id="signToggle" title="Sign with this device's key — proves it was you, proves nothing about what.">◌ unsigned</button>
+      <button id="signToggle" title="Sign with this device's key — proves it was you, proves nothing about what.">&#9676; unsigned</button>
       <button id="place" disabled>place</button>
     </div>
   </div>
   <div class="share">
-    <span class="label">this room ↗</span>
-    <div id="shareLink" title="Tap to copy. Open on another device to witness together.">generating…</div>
+    <span class="label">this room &#8599;</span>
+    <div id="shareLink" title="Tap to copy. Open on another device to witness together.">generating&hellip;</div>
   </div>
 </footer>
 
 <script type="module">
-// ---------- helpers ----------
-const enc = new TextEncoder();
-const b64 = b => btoa(String.fromCharCode(...new Uint8Array(b))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
-const unb64 = s => { s=s.replace(/-/g,'+').replace(/_/g,'/'); return Uint8Array.from(atob(s),c=>c.charCodeAt(0)); };
-const rid = (n=12) => b64(crypto.getRandomValues(new Uint8Array(n)));
-// PeerJS ids must be alphanumeric-ish; derive a safe id from a room + slot
-const safe = s => s.replace(/[^a-zA-Z0-9]/g,'').slice(0,40);
+const enc=new TextEncoder();
+const b64=b=>btoa(String.fromCharCode(...new Uint8Array(b))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+const unb64=s=>{s=s.replace(/-/g,'+').replace(/_/g,'/');return Uint8Array.from(atob(s),c=>c.charCodeAt(0));};
+const rid=(n=12)=>b64(crypto.getRandomValues(new Uint8Array(n)));
+const safe=s=>s.replace(/[^a-zA-Z0-9]/g,'').slice(0,40);
 
-const WITNESS_TTL = 14000;   // a block lives this long once it stops being witnessed
-const HEARTBEAT   = 3500;    // presence pulse to direct peers
-const PRESENCE_TTL = 10000;  // a peer counts as present this long after last pulse
+const WITNESS_TTL=14000, HEARTBEAT=3500, PRESENCE_TTL=10000;
 
-// ---------- identity (optional proof) ----------
-let signing = false, keys = null, myPubRaw = null;
-async function ensureKeys() {
-  if (keys) return;
-  keys = await crypto.subtle.generateKey({name:'ECDSA',namedCurve:'P-256'}, true, ['sign','verify']);
-  myPubRaw = b64(await crypto.subtle.exportKey('raw', keys.publicKey));
+// identity (optional proof)
+let signing=false,keys=null,myPubRaw=null;
+async function ensureKeys(){ if(keys)return; keys=await crypto.subtle.generateKey({name:'ECDSA',namedCurve:'P-256'},true,['sign','verify']); myPubRaw=b64(await crypto.subtle.exportKey('raw',keys.publicKey)); }
+async function sign(text,ts){ return b64(await crypto.subtle.sign({name:'ECDSA',hash:'SHA-256'},keys.privateKey,enc.encode(text+'|'+ts))); }
+async function verify(pubRaw,text,ts,sig){ try{ const pk=await crypto.subtle.importKey('raw',unb64(pubRaw),{name:'ECDSA',namedCurve:'P-256'},true,['verify']); return await crypto.subtle.verify({name:'ECDSA',hash:'SHA-256'},pk,unb64(sig),enc.encode(text+'|'+ts)); }catch{return false;} }
+
+// room
+let ROOM=location.hash.slice(1);
+if(!ROOM){ ROOM=rid(9); location.hash=ROOM; }
+const ROOMKEY=safe(ROOM);
+const HOST_ID='wit-'+ROOMKEY+'-host';          // deterministic rendezvous point
+const MY_ID='wit-'+ROOMKEY+'-'+Math.random().toString(36).slice(2,9);
+
+// surface
+const surface=document.getElementById('surface'), emptyEl=document.getElementById('empty');
+const live=new Map();
+function refreshEmpty(){ emptyEl.style.display=live.size?'none':'flex'; }
+function place(block,mine){
+  if(live.has(block.id)){ const r=live.get(block.id); r.expires=Date.now()+WITNESS_TTL; r.el.classList.remove('fading'); return; }
+  const el=document.createElement('div'); el.className='block'+(mine?' mine':'');
+  const proof=block.sig?`<span class="proven">proven &middot; ${block.pub.slice(0,8)}</span>`:`<span class="anon">unsigned</span>`;
+  el.innerHTML=`<div class="body"></div><div class="meta">${proof}</div>`;
+  el.querySelector('.body').textContent=block.text;
+  surface.appendChild(el); live.set(block.id,{el,expires:Date.now()+WITNESS_TTL}); refreshEmpty();
 }
-async function sign(text, ts) {
-  return b64(await crypto.subtle.sign({name:'ECDSA',hash:'SHA-256'}, keys.privateKey, enc.encode(text+'|'+ts)));
-}
-async function verify(pubRaw, text, ts, sig) {
-  try {
-    const pk = await crypto.subtle.importKey('raw', unb64(pubRaw), {name:'ECDSA',namedCurve:'P-256'}, true, ['verify']);
-    return await crypto.subtle.verify({name:'ECDSA',hash:'SHA-256'}, pk, unb64(sig), enc.encode(text+'|'+ts));
-  } catch { return false; }
-}
+setInterval(()=>{const now=Date.now();for(const[id,r]of live){if(now>r.expires&&!r.el.classList.contains('fading')){r.el.classList.add('fading');setTimeout(()=>{r.el.remove();live.delete(id);refreshEmpty();},2800);}}},1000);
+setInterval(()=>{ if(peers.size>0)for(const r of live.values())r.expires=Math.max(r.expires,Date.now()+5000); },3000);
 
-// ---------- room + identity on the mesh ----------
-let ROOM = location.hash.slice(1);
-if (!ROOM) { ROOM = rid(9); location.hash = ROOM; }
-const ROOMKEY = safe(ROOM);
-const MYSLOT = Math.random().toString(36).slice(2,8);
-const MYPEERID = 'wit-' + ROOMKEY + '-' + MYSLOT;   // unique per witness, discoverable by room prefix
+// mesh
+const statusEl=document.getElementById('status');
+function setStatus(t,alive){ statusEl.childNodes[1].nodeValue=' '+t; statusEl.classList.toggle('alive',!!alive); }
+const peers=new Map();   // peerId -> {conn,lastSeen}
+const seen=new Set();
+let peer=null, isHost=false;
 
-// ---------- surface ----------
-const surface = document.getElementById('surface');
-const emptyEl = document.getElementById('empty');
-const live = new Map(); // blockId -> { el, expires }
-function refreshEmpty() { emptyEl.style.display = live.size ? 'none':'flex'; }
+function broadcast(obj,exceptId){ const d=JSON.stringify(obj); for(const[pid,r]of peers){ if(pid===exceptId)continue; try{ if(r.conn&&r.conn.open)r.conn.send(d);}catch{} } }
 
-function place(block, mine) {
-  if (live.has(block.id)) { const r = live.get(block.id); r.expires = Date.now()+WITNESS_TTL; r.el.classList.remove('fading'); return; }
-  const el = document.createElement('div');
-  el.className = 'block' + (mine?' mine':'');
-  const proof = block.sig ? `<span class="proven">proven · ${block.pub.slice(0,8)}</span>` : `<span class="anon">unsigned</span>`;
-  el.innerHTML = `<div class="body"></div><div class="meta">${proof}</div>`;
-  el.querySelector('.body').textContent = block.text;
-  surface.appendChild(el);
-  live.set(block.id, { el, expires: Date.now()+WITNESS_TTL });
-  refreshEmpty();
-}
-// the reaper — nothing deleted, just no longer held
-setInterval(() => {
-  const now = Date.now();
-  for (const [id,r] of live) {
-    if (now > r.expires && !r.el.classList.contains('fading')) {
-      r.el.classList.add('fading');
-      setTimeout(()=>{ r.el.remove(); live.delete(id); refreshEmpty(); }, 2800);
-    }
-  }
-}, 1000);
-// being watched keeps blocks alive
-setInterval(() => {
-  if (peers.size > 0) for (const r of live.values()) r.expires = Math.max(r.expires, Date.now()+5000);
-}, 3000);
-
-// ---------- the mesh ----------
-const statusEl = document.getElementById('status');
-function setStatus(t, alive){ statusEl.childNodes[1].nodeValue = ' '+t; statusEl.classList.toggle('alive', !!alive); }
-
-const peers = new Map();      // peerId -> { conn, lastSeen }
-const seen  = new Set();      // block ids we've already relayed (mesh flood control)
-let peer = null;
-
-function broadcast(obj, exceptId) {
-  const data = JSON.stringify(obj);
-  for (const [pid, rec] of peers) {
-    if (pid === exceptId) continue;
-    try { if (rec.conn && rec.conn.open) rec.conn.send(data); } catch {}
-  }
-}
-
-function wireConn(conn) {
-  conn.on('open', () => {
-    peers.set(conn.peer, { conn, lastSeen: Date.now() });
-    renderWitnesses();
-    setStatus('witnessing together · direct', true);
-    // greet so they learn our presence
-    conn.send(JSON.stringify({ t:'hello', from: MYPEERID }));
-  });
-  conn.on('data', async raw => {
-    let m; try { m = JSON.parse(raw); } catch { return; }
-    if (peers.has(conn.peer)) peers.get(conn.peer).lastSeen = Date.now();
-
-    if (m.t === 'hello' || m.t === 'beat') { renderWitnesses(); return; }
-    if (m.t === 'block') {
-      if (seen.has(m.id)) return;     // already have it; don't loop the mesh
-      seen.add(m.id);
-      let ok = true;
-      if (m.sig) ok = await verify(m.pub, m.text, m.ts, m.sig);
-      if (!ok) return;                 // a proof that doesn't hold is dropped
-      place(m, false);
-      broadcast(m, conn.peer);         // flood to my other peers (multi-hop mesh)
+function wire(conn){
+  conn.on('open',()=>{
+    pending.delete(conn.peer);
+    peers.set(conn.peer,{conn,lastSeen:Date.now()}); renderWitnesses();
+    setStatus(isHost?'hosting the room · witnessing together':'witnessing together · direct',true);
+    conn.send(JSON.stringify({t:'hello',from:MY_ID}));
+    // the host introduces this newcomer to everyone else, so guests find each other
+    if(isHost){
+      const others=[...peers.keys()].filter(p=>p!==conn.peer);
+      conn.send(JSON.stringify({t:'roster',peers:others}));
+      broadcast({t:'arrive',who:conn.peer},conn.peer);
     }
   });
-  conn.on('close', () => { peers.delete(conn.peer); renderWitnesses(); });
-  conn.on('error', () => { peers.delete(conn.peer); renderWitnesses(); });
+  conn.on('data',async raw=>{
+    let m; try{m=JSON.parse(raw);}catch{return;}
+    if(peers.has(conn.peer))peers.get(conn.peer).lastSeen=Date.now();
+    if(m.t==='hello'||m.t==='beat'){ renderWitnesses(); return; }
+    if(m.t==='roster'){ for(const pid of (m.peers||[])) connectTo(pid); return; }
+    if(m.t==='arrive'){ if(m.who&&m.who!==MY_ID) connectTo(m.who); return; }
+    if(m.t==='block'){
+      if(seen.has(m.id))return; seen.add(m.id);
+      let ok=true; if(m.sig)ok=await verify(m.pub,m.text,m.ts,m.sig);
+      if(!ok)return;
+      place(m,false); broadcast(m,conn.peer);  // multi-hop flood
+    }
+  });
+  conn.on('close',()=>{pending.delete(conn.peer);peers.delete(conn.peer);renderWitnesses();});
+  conn.on('error',()=>{pending.delete(conn.peer);peers.delete(conn.peer);renderWitnesses();});
 }
 
-function joinMesh() {
-  setStatus('reaching the room…', false);
-  peer = new Peer(MYPEERID, { debug: 1 });
+const pending=new Set();
+function connectTo(pid){
+  if(!peer||pid===MY_ID||(pid===HOST_ID&&isHost)||peers.has(pid)||pending.has(pid))return null;
+  try{
+    const c=peer.connect(pid,{reliable:true,serialization:'json'});
+    if(c){
+      pending.add(pid); wire(c);
+      // if it never opens, free the slot so the pursue loop can retry
+      setTimeout(()=>{ if(pending.has(pid)&&!peers.has(pid)){ pending.delete(pid); try{c.close();}catch{} } },4000);
+    }
+    return c;
+  }catch{ return null; }
+}
 
-  peer.on('open', () => {
-    setStatus('in the room · waiting for others', true);
-    // accept inbound
-    peer.on('connection', wireConn);
-    // discover existing witnesses by probing room slots
-    discover();
-    setInterval(discover, 6000); // keep finding newcomers
+// Guest keeps trying to reach the host until connected. It does NOT promote itself
+// to host on a single miss — only if the host seat is truly empty after several tries.
+let hostTries=0;
+function guestPursueHost(){
+  if(isHost) return;                          // we became host elsewhere
+  if(peers.has(HOST_ID)){ hostTries=0; return; } // connected — done pursuing
+  hostTries++;
+  setStatus('joining the room… ('+hostTries+')',true);
+  connectTo(HOST_ID);
+  if(hostTries>=5){
+    // host genuinely never answered across ~5 tries -> claim the empty seat
+    hostTries=0;
+    try{peer.destroy();}catch{}
+    setTimeout(()=>start(true),300);
+    return;
+  }
+  setTimeout(guestPursueHost,1200);           // retry with steady backoff
+}
+
+function start(asHost){
+  isHost=asHost;
+  peer=new Peer(asHost?HOST_ID:MY_ID,{debug:1});
+
+  peer.on('open',()=>{
+    if(asHost){ setStatus('room open · hosting · waiting for others',true); }
+    else{ setStatus('joining the room…',true); hostTries=0; guestPursueHost(); }
   });
 
-  // someone connects to us
-  peer.on('connection', wireConn);
+  peer.on('connection',wire);
 
-  peer.on('error', (err) => {
-    // 'peer-unavailable' is normal during discovery probing — ignore quietly
-    if (err.type === 'peer-unavailable') return;
-    if (err.type === 'unavailable-id') { // our slot taken (rare) — rejoin with new slot
-      setStatus('slot clash · rejoining…', false);
+  peer.on('error',err=>{
+    if(err.type==='unavailable-id'){
+      // host seat already taken -> we are a guest; connect to the existing host
+      try{peer.destroy();}catch{}
+      setTimeout(()=>start(false),200);
       return;
     }
-    setStatus('mesh trouble: ' + err.type, false);
+    if(err.type==='peer-unavailable'){
+      // a connect attempt missed. DO NOT flip roles here — guestPursueHost handles retries.
+      return;
+    }
+    if(err.type==='network'||err.type==='server-error'||err.type==='socket-error'){
+      setStatus('broker unreachable · retrying…',false);
+      try{peer.destroy();}catch{}
+      setTimeout(()=>start(isHost),1500);
+      return;
+    }
+    // unknown errors: surface but don't crash the room
+    setStatus('mesh note: '+err.type,!!peers.size);
   });
 
-  peer.on('disconnected', () => { setStatus('link slipped · reconnecting…', false); try{peer.reconnect();}catch{} });
+  peer.on('disconnected',()=>{ setStatus('link slipped · reconnecting…',false); try{peer.reconnect();}catch{} });
 }
 
-// Discovery: probe a small space of slots for this room and connect to any that answer.
-// (Demo-scale: works cleanly for small rooms. Large rooms need a real signaling list.)
-const PROBE = 'abcdefghijklmnopqrstuvwxyz0123456789';
-function discover() {
-  // Try connecting to a spread of candidate slots. Live ones accept; dead ones error quietly.
-  // To stay light we probe a rotating sample rather than the whole space.
-  for (let i = 0; i < 12; i++) {
-    const guess = 'wit-' + ROOMKEY + '-' + sampleSlot();
-    if (guess === MYPEERID || peers.has(guess)) continue;
-    try {
-      const conn = peer.connect(guess, { reliable: true, serialization: 'json' });
-      if (conn) wireConn(conn);
-    } catch {}
-  }
-}
-// Bias sampling toward short slots so peers find each other fast in a small room.
-function sampleSlot() {
-  // try the 6-char random space — collisions are what *connect* us
-  let s = '';
-  for (let i=0;i<6;i++) s += PROBE[Math.floor(Math.random()*PROBE.length)];
-  return s;
-}
+// Try to BE the host at the known seat. If it's taken, the 'unavailable-id' path
+// turns us into a guest that pursues the existing host. No role-flip races.
+start(true);
 
-// ---------- presence readout ----------
-const witnessEl = document.getElementById('witnesses');
-function renderWitnesses() {
-  const now = Date.now();
-  for (const [pid,r] of peers) if (now - r.lastSeen > PRESENCE_TTL || !r.conn || !r.conn.open) {
-    if (!r.conn || !r.conn.open) peers.delete(pid);
-  }
-  const n = peers.size + 1;
-  witnessEl.innerHTML = n === 1
-    ? `you are the only one here · what you place will not outlast your looking`
-    : `<b>${n}</b> witnessing · held directly, device to device`;
+// presence
+const witnessEl=document.getElementById('witnesses');
+function renderWitnesses(){
+  for(const[pid,r]of peers){ if(!r.conn||!r.conn.open)peers.delete(pid); }
+  const n=peers.size+1;
+  witnessEl.innerHTML=n===1?`you are the only one here · what you place will not outlast your looking`:`<b>${n}</b> witnessing · held directly, device to device`;
 }
-setInterval(() => { for (const r of peers.values()) { if (r.conn && r.conn.open) try{ r.conn.send(JSON.stringify({t:'beat', from:MYPEERID})); }catch{} } }, HEARTBEAT);
-setInterval(renderWitnesses, 1500);
-renderWitnesses();
+setInterval(()=>{ for(const r of peers.values()){ if(r.conn&&r.conn.open)try{r.conn.send(JSON.stringify({t:'beat',from:MY_ID}));}catch{} } },HEARTBEAT);
+setInterval(renderWitnesses,1500); renderWitnesses();
 
-// ---------- placing ----------
-const write = document.getElementById('write');
-const placeBtn = document.getElementById('place');
-const signBtn = document.getElementById('signToggle');
-write.addEventListener('input', () => {
-  placeBtn.disabled = !write.value.trim();
-  write.style.height='auto'; write.style.height=Math.min(write.scrollHeight,120)+'px';
-});
-write.addEventListener('keydown', e => { if (e.key==='Enter' && !e.shiftKey){ e.preventDefault(); doPlace(); } });
-signBtn.onclick = async () => {
-  signing = !signing; if (signing) await ensureKeys();
-  signBtn.classList.toggle('on', signing);
-  signBtn.textContent = signing ? '✦ signing' : '◌ unsigned';
-};
-async function doPlace() {
-  const text = write.value.trim(); if (!text) return;
-  const ts = Date.now();
-  const block = { t:'block', id: rid(8), text, ts, sig:null, pub:null };
-  if (signing) { await ensureKeys(); block.sig = await sign(text, ts); block.pub = myPubRaw; }
-  seen.add(block.id);
-  place(block, true);     // witness my own
-  broadcast(block);       // breathe it directly to every peer
+// placing
+const write=document.getElementById('write'), placeBtn=document.getElementById('place'), signBtn=document.getElementById('signToggle');
+write.addEventListener('input',()=>{ placeBtn.disabled=!write.value.trim(); write.style.height='auto'; write.style.height=Math.min(write.scrollHeight,120)+'px'; });
+write.addEventListener('keydown',e=>{ if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();doPlace();} });
+signBtn.onclick=async()=>{ signing=!signing; if(signing)await ensureKeys(); signBtn.classList.toggle('on',signing); signBtn.textContent=signing?'\u2726 signing':'\u25CC unsigned'; };
+async function doPlace(){
+  const text=write.value.trim(); if(!text)return;
+  const ts=Date.now(); const block={t:'block',id:rid(8),text,ts,sig:null,pub:null};
+  if(signing){ await ensureKeys(); block.sig=await sign(text,ts); block.pub=myPubRaw; }
+  seen.add(block.id); place(block,true); broadcast(block);
   write.value=''; write.style.height='auto'; placeBtn.disabled=true;
 }
-placeBtn.onclick = doPlace;
+placeBtn.onclick=doPlace;
 
-// ---------- share ----------
-const shareEl = document.getElementById('shareLink');
-shareEl.textContent = location.href;
-shareEl.onclick = async () => {
-  try { await navigator.clipboard.writeText(location.href);
-    const old = shareEl.textContent; shareEl.textContent='copied — open it elsewhere to witness together';
-    setTimeout(()=>shareEl.textContent=old,1800);
-  } catch {}
-};
-
-joinMesh();
+// share
+const shareEl=document.getElementById('shareLink');
+shareEl.textContent=location.href;
+shareEl.onclick=async()=>{ try{ await navigator.clipboard.writeText(location.href); const old=shareEl.textContent; shareEl.textContent='copied — open it elsewhere to witness together'; setTimeout(()=>shareEl.textContent=old,1800);}catch{} };
 </script>
 </body>
 </html>
