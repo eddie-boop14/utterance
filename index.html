@@ -188,9 +188,21 @@ function guestPursueHost(){
   setTimeout(guestPursueHost,1200);           // retry with steady backoff
 }
 
+// ICE servers: STUN finds your address; TURN relays (DTLS-encrypted, stores nothing)
+// only when a direct device-to-device punch fails. Same-network peers still go pure P2P.
+// OpenRelay is a free public TURN — fine to prove cross-network works; swap for your own
+// (coturn) or Cloudflare TURN once it's worth owning the relay.
+const ICE = { iceServers: [
+  { urls: 'stun:stun.l.google.com:19302' },
+  { urls: 'stun:stun.cloudflare.com:3478' },
+  { urls: 'turn:openrelay.metered.ca:80', username:'openrelayproject', credential:'openrelayproject' },
+  { urls: 'turn:openrelay.metered.ca:443', username:'openrelayproject', credential:'openrelayproject' },
+  { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username:'openrelayproject', credential:'openrelayproject' }
+] };
+
 function start(asHost){
   isHost=asHost;
-  peer=new Peer(asHost?HOST_ID:MY_ID,{debug:1});
+  peer=new Peer(asHost?HOST_ID:MY_ID,{debug:1, config:ICE});
 
   peer.on('open',()=>{
     if(asHost){ setStatus('room open · hosting · waiting for others',true); }
