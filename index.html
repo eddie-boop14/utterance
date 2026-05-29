@@ -91,8 +91,29 @@ const WITNESS_TTL=14000, HEARTBEAT=3500, PRESENCE_TTL=10000;
 // identity (optional proof)
 let signing=false,keys=null,myPubRaw=null;
 async function ensureKeys(){ if(keys)return; keys=await crypto.subtle.generateKey({name:'ECDSA',namedCurve:'P-256'},true,['sign','verify']); myPubRaw=b64(await crypto.subtle.exportKey('raw',keys.publicKey)); }
-async function sign(text,ts){ return b64(await crypto.subtle.sign({name:'ECDSA',hash:'SHA-256'},keys.privateKey,enc.encode(text+'|'+ts))); }
-async function verify(pubRaw,text,ts,sig){ try{ const pk=await crypto.subtle.importKey('raw',unb64(pubRaw),{name:'ECDSA',namedCurve:'P-256'},true,['verify']); return await crypto.subtle.verify({name:'ECDSA',hash:'SHA-256'},pk,unb64(sig),enc.encode(text+'|'+ts)); }catch{return false;} }
+// The signed payload is bound to: room, author, text, timestamp, and a one-time nonce.
+// This makes a captured signature useless elsewhere: wrong room fails, a stale timestamp
+// is rejected, and a replayed nonce is caught. "Proven" now means: this author said this,
+// in THIS room, ONCE, at THIS time — not just "some author signed this text sometime."
+function sigPayload(o){ return [ROOM, o.pub, o.text, o.ts, o.nonce].join('\u0001'); }
+async function sign(o){ return b64(await crypto.subtle.sign({name:'ECDSA',hash:'SHA-256'},keys.privateKey,enc.encode(sigPayload(o)))); }
+async function verify(o){
+  try{
+    const pk=await crypto.subtle.importKey('raw',unb64(o.pub),{name:'ECDSA',namedCurve:'P-256'},true,['verify']);
+    return await crypto.subtle.verify({name:'ECDSA',hash:'SHA-256'},pk,unb64(o.sig),enc.encode(sigPayload(o)));
+  }catch{return false;}
+}
+const SIG_WINDOW=120000;          // a signed message older than this is rejected as stale
+const usedNonces=new Map();       // nonce -> ts, to catch replays (pruned by window)
+function nonceFresh(nonce,ts){
+  const now=Date.now();
+  if(Math.abs(now-ts)>SIG_WINDOW) return false;     // too old (or absurd future) -> stale
+  if(usedNonces.has(nonce)) return false;            // already seen -> replay
+  usedNonces.set(nonce,ts);
+  // prune old nonces so the map can't grow unbounded
+  if(usedNonces.size>500){ for(const[k,t]of usedNonces){ if(now-t>SIG_WINDOW) usedNonces.delete(k); } }
+  return true;
+}
 
 // room
 let ROOM=location.hash.slice(1);
@@ -146,7 +167,11 @@ function wire(conn){
     if(m.t==='arrive'){ if(m.who&&m.who!==MY_ID) connectTo(m.who); return; }
     if(m.t==='block'){
       if(seen.has(m.id))return; seen.add(m.id);
-      let ok=true; if(m.sig)ok=await verify(m.pub,m.text,m.ts,m.sig);
+      let ok=true;
+      if(m.sig){
+        // a signed message must verify AND be fresh AND not a replay
+        ok = await verify(m) && nonceFresh(m.nonce, m.ts);
+      }
       if(!ok)return;
       place(m,false); broadcast(m,conn.peer);  // multi-hop flood
     }
@@ -256,8 +281,8 @@ write.addEventListener('keydown',e=>{ if(e.key==='Enter'&&!e.shiftKey){e.prevent
 signBtn.onclick=async()=>{ signing=!signing; if(signing)await ensureKeys(); signBtn.classList.toggle('on',signing); signBtn.textContent=signing?'\u2726 signing':'\u25CC unsigned'; };
 async function doPlace(){
   const text=write.value.trim(); if(!text)return;
-  const ts=Date.now(); const block={t:'block',id:rid(8),text,ts,sig:null,pub:null};
-  if(signing){ await ensureKeys(); block.sig=await sign(text,ts); block.pub=myPubRaw; }
+  const ts=Date.now(); const block={t:'block',id:rid(8),text,ts,sig:null,pub:null,nonce:null};
+  if(signing){ await ensureKeys(); block.pub=myPubRaw; block.nonce=rid(8); block.sig=await sign(block); }
   seen.add(block.id); place(block,true); broadcast(block);
   write.value=''; write.style.height='auto'; placeBtn.disabled=true;
 }
