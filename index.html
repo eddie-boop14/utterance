@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>witness — proven, and gone</title>
+<title>utterance — proven, and gone</title>
 <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500&family=JetBrains+Mono:wght@400;500&display=swap');
@@ -54,7 +54,7 @@
 </head>
 <body>
 <header>
-  <div class="mark"><b>witness</b></div>
+  <div class="mark"><b>utterance</b></div>
   <div class="creed">proven &middot; and gone</div>
 </header>
 <div id="status"><span class="dot"></span>opening the channel&hellip;</div>
@@ -75,7 +75,7 @@
   </div>
   <div class="share">
     <span class="label">this room &#8599;</span>
-    <div id="shareLink" title="Tap to copy. Open on another device to witness together.">generating&hellip;</div>
+    <div id="shareLink" title="Tap to copy. Open on another device to say into the same room.">generating&hellip;</div>
   </div>
 </footer>
 
@@ -98,8 +98,8 @@ async function verify(pubRaw,text,ts,sig){ try{ const pk=await crypto.subtle.imp
 let ROOM=location.hash.slice(1);
 if(!ROOM){ ROOM=rid(9); location.hash=ROOM; }
 const ROOMKEY=safe(ROOM);
-const HOST_ID='wit-'+ROOMKEY+'-host';          // deterministic rendezvous point
-const MY_ID='wit-'+ROOMKEY+'-'+Math.random().toString(36).slice(2,9);
+const HOST_ID='utt-'+ROOMKEY+'-host';          // deterministic rendezvous point
+const MY_ID='utt-'+ROOMKEY+'-'+Math.random().toString(36).slice(2,9);
 
 // surface
 const surface=document.getElementById('surface'), emptyEl=document.getElementById('empty');
@@ -129,7 +129,7 @@ function wire(conn){
   conn.on('open',()=>{
     pending.delete(conn.peer);
     peers.set(conn.peer,{conn,lastSeen:Date.now()}); renderWitnesses();
-    setStatus(isHost?'hosting the room · witnessing together':'witnessing together · direct',true);
+    setStatus(isHost?'hosting the room · spoken together':'spoken together · direct',true);
     conn.send(JSON.stringify({t:'hello',from:MY_ID}));
     // the host introduces this newcomer to everyone else, so guests find each other
     if(isHost){
@@ -232,7 +232,7 @@ const witnessEl=document.getElementById('witnesses');
 function renderWitnesses(){
   for(const[pid,r]of peers){ if(!r.conn||!r.conn.open)peers.delete(pid); }
   const n=peers.size+1;
-  witnessEl.innerHTML=n===1?`you are the only one here · what you place will not outlast your looking`:`<b>${n}</b> witnessing · held directly, device to device`;
+  witnessEl.innerHTML=n===1?`you are the only one here · what you place will not outlast your looking`:`<b>${n}</b> saying · held directly, device to device`;
 }
 setInterval(()=>{ for(const r of peers.values()){ if(r.conn&&r.conn.open)try{r.conn.send(JSON.stringify({t:'beat',from:MY_ID}));}catch{} } },HEARTBEAT);
 setInterval(renderWitnesses,1500); renderWitnesses();
@@ -254,7 +254,7 @@ placeBtn.onclick=doPlace;
 // share
 const shareEl=document.getElementById('shareLink');
 shareEl.textContent=location.href;
-shareEl.onclick=async()=>{ try{ await navigator.clipboard.writeText(location.href); const old=shareEl.textContent; shareEl.textContent='copied — open it elsewhere to witness together'; setTimeout(()=>shareEl.textContent=old,1800);}catch{} };
+shareEl.onclick=async()=>{ try{ await navigator.clipboard.writeText(location.href); const old=shareEl.textContent; shareEl.textContent='copied — open it elsewhere to share the room'; setTimeout(()=>shareEl.textContent=old,1800);}catch{} };
 </script>
 </body>
 </html>
