@@ -53,7 +53,7 @@
   #foot{flex-shrink:0;padding:7px 14px 10px;display:flex;justify-content:space-between;
     align-items:center;gap:10px;font-size:9px;letter-spacing:.1em;text-transform:uppercase;
     color:#1f3a2e;border-top:1px solid #0c1813;}
-  #shareLink{color:#2c4a3c;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;flex:1;}
+  #shareLink{color:#2c4a3c;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;flex:1;text-transform:none;}
   /* hidden elements the engine still expects */
   #place,#signToggle,#write,#surface,#witnesses{position:absolute;left:-9999px;width:1px;height:1px;opacity:0;}
 </style>
@@ -130,7 +130,12 @@ function nonceFresh(nonce,ts){
 
 // room
 let ROOM=location.hash.slice(1);
-if(!ROOM){ ROOM=rid(9); location.hash=ROOM; }
+if(!ROOM){ ROOM=rid(9); }
+// Case-insensitive rooms: the share link gets read/typed by hand and the footer renders
+// it uppercased, so normalise to one canonical case. Otherwise the rendezvous id
+// (utt-<room>-host) is case-sensitive and two people "in the same room" never meet.
+ROOM=ROOM.toLowerCase();
+if(location.hash.slice(1)!==ROOM) location.hash=ROOM;
 const ROOMKEY=safe(ROOM);
 const HOST_ID='utt-'+ROOMKEY+'-host';          // deterministic rendezvous point
 const MY_ID='utt-'+ROOMKEY+'-'+Math.random().toString(36).slice(2,9);
@@ -345,7 +350,7 @@ const sigilT=document.getElementById('sigil');
 const statusT=document.getElementById('status');
 const witReadout=document.getElementById('witnessReadout');
 // Visible build tag — a quick way to confirm which deploy is actually loaded.
-const BUILD='b5';
+const BUILD='b6';
 const buildEl=document.getElementById('build'); if(buildEl) buildEl.textContent=BUILD;
 
 function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
