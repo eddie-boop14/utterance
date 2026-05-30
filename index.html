@@ -278,38 +278,52 @@ function start(asHost){
     setStatus('mesh note: '+err.type,!!peers.size);
   });
 
-  peer.on('disconnected',()=>{ setStatus('link slipped · reconnecting…',false); try{peer.reconnect();}catch{} });
+  // The signaling link dropped. Existing WebRTC data channels survive this, so if we
+  // still have peers the room is FINE — don't alarm, don't reconnect here (the watchdog
+  // owns reconnection with backoff, so we never double-call or hammer the broker).
+  peer.on('disconnected',()=>{ if(!peers.size) setStatus('link slipped · reconnecting…',false); });
 }
 
 // Try to BE the host at the known seat. If it's taken, the 'unavailable-id' path
 // turns us into a guest that pursues the existing host. No role-flip races.
 start(true);
 
-// Reconnect watchdog. guestPursueHost's loop stops once linked, and PeerJS's
-// reconnect() silently fails after the broker has expired a session (which happens
-// fast when a mobile tab is suspended) — so a dropped tab would sit on "reconnecting…"
-// forever. Recover in stages: nudge the broker socket back a couple of times; if it
-// still won't take, tear the peer down and rebuild a fresh session; once the broker is
-// healthy again, re-announce as host (status can stick after a blip even when fine) or,
-// as a guest with no host link, resume the pursuit.
-let reconnTries=0;
+// Reconnect watchdog — gentle and mesh-preserving. PeerJS's reconnect() can silently
+// fail after the broker expires a session, so a dead session must eventually be rebuilt;
+// but tearing the peer down also drops every live data channel, so we only do that when
+// we're ALONE and reconnect has failed repeatedly. With peers connected we just keep
+// nudging the broker back (the chat itself rides the surviving data channels). Backoff
+// avoids hammering the public broker, which itself can cause more drops.
+let reconnTries=0, nextTry=0;
 function reconnectTick(){
+  const now=Date.now();
   if(!peer){ start(isHost); return; }
-  if(peer.destroyed){ reconnTries=0; start(isHost); return; }
+  if(peer.destroyed){ if(now>=nextTry){ nextTry=now+2000; start(isHost); } return; }
   if(peer.disconnected){
-    if(reconnTries++ < 2){ try{peer.reconnect();}catch{} }       // cheap reconnect first
-    else { reconnTries=0; setStatus('re-opening the channel…',false); try{peer.destroy();}catch{} setTimeout(()=>start(isHost),300); } // then full rebuild
+    if(now<nextTry) return;
+    reconnTries++;
+    nextTry=now+Math.min(2000*reconnTries,15000);                 // gentle backoff
+    if(peers.size>0 || reconnTries<=4){ try{peer.reconnect();}catch{} } // never tear down a live mesh
+    else { reconnTries=0; nextTry=now+2000; setStatus('re-opening the channel…',false); try{peer.destroy();}catch{} setTimeout(()=>start(isHost),300); }
     return;
   }
-  reconnTries=0;                                                  // broker is healthy
+  reconnTries=0; nextTry=0;                                        // broker is healthy
   if(isHost){ setStatus(peers.size?'hosting the room · spoken together':'room open · hosting · waiting for others',true); }
   else if(!peers.has(HOST_ID)&&hostTries===0){ guestPursueHost(); }
 }
-setInterval(reconnectTick,3000);
+setInterval(reconnectTick,1500);
+
+// Keep the screen awake while this tab is visible. Without it, a host phone sitting idle
+// (while you use the other device) dims/locks, the browser throttles the tab, it misses
+// the broker's keepalive pings and the link "slips". The lock is auto-released when the
+// tab is hidden, so we re-request it whenever we become visible again.
+let wakeLock=null;
+async function keepAwake(){ try{ if('wakeLock' in navigator && document.visibilityState==='visible'){ wakeLock=await navigator.wakeLock.request('screen'); wakeLock.addEventListener?.('release',()=>{ wakeLock=null; }); } }catch{} }
+keepAwake();
 // A suspended mobile tab freezes the interval above and drops its sockets; the moment
 // it's foregrounded (or the network returns) drive recovery right away rather than
 // waiting for the next tick.
-document.addEventListener('visibilitychange',()=>{ if(!document.hidden) reconnectTick(); });
+document.addEventListener('visibilitychange',()=>{ if(!document.hidden){ keepAwake(); reconnectTick(); } });
 window.addEventListener('focus',reconnectTick);
 window.addEventListener('online',reconnectTick);
 
@@ -350,7 +364,7 @@ const sigilT=document.getElementById('sigil');
 const statusT=document.getElementById('status');
 const witReadout=document.getElementById('witnessReadout');
 // Visible build tag — a quick way to confirm which deploy is actually loaded.
-const BUILD='b6';
+const BUILD='b7';
 const buildEl=document.getElementById('build'); if(buildEl) buildEl.textContent=BUILD;
 
 function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
