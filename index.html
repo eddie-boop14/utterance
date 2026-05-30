@@ -279,16 +279,33 @@ function start(asHost){
 // turns us into a guest that pursues the existing host. No role-flip races.
 start(true);
 
-// Reconnect watchdog. guestPursueHost's loop stops once linked, so a guest that later
-// loses the host (data channel dropped, or the broker link slipped and came back) had
-// no way back in — it sat on "reconnecting…" forever. This drives recovery from either
-// state: first get the broker socket back, then, if we're a guest with no host link and
-// aren't already pursuing, resume the pursuit. The host just keeps its seat and waits.
-setInterval(()=>{
-  if(!peer||peer.destroyed)return;
-  if(peer.disconnected){ try{peer.reconnect();}catch{} return; } // broker first
-  if(!isHost&&!peers.has(HOST_ID)&&hostTries===0) guestPursueHost();
-},3000);
+// Reconnect watchdog. guestPursueHost's loop stops once linked, and PeerJS's
+// reconnect() silently fails after the broker has expired a session (which happens
+// fast when a mobile tab is suspended) — so a dropped tab would sit on "reconnecting…"
+// forever. Recover in stages: nudge the broker socket back a couple of times; if it
+// still won't take, tear the peer down and rebuild a fresh session; once the broker is
+// healthy again, re-announce as host (status can stick after a blip even when fine) or,
+// as a guest with no host link, resume the pursuit.
+let reconnTries=0;
+function reconnectTick(){
+  if(!peer){ start(isHost); return; }
+  if(peer.destroyed){ reconnTries=0; start(isHost); return; }
+  if(peer.disconnected){
+    if(reconnTries++ < 2){ try{peer.reconnect();}catch{} }       // cheap reconnect first
+    else { reconnTries=0; try{peer.destroy();}catch{} setTimeout(()=>start(isHost),300); } // then full rebuild
+    return;
+  }
+  reconnTries=0;                                                  // broker is healthy
+  if(isHost){ setStatus(peers.size?'hosting the room · spoken together':'room open · hosting · waiting for others',true); }
+  else if(!peers.has(HOST_ID)&&hostTries===0){ guestPursueHost(); }
+}
+setInterval(reconnectTick,3000);
+// A suspended mobile tab freezes the interval above and drops its sockets; the moment
+// it's foregrounded (or the network returns) drive recovery right away rather than
+// waiting for the next tick.
+document.addEventListener('visibilitychange',()=>{ if(!document.hidden) reconnectTick(); });
+window.addEventListener('focus',reconnectTick);
+window.addEventListener('online',reconnectTick);
 
 // presence
 const witnessEl=document.getElementById('witnesses');
