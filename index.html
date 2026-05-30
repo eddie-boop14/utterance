@@ -3,295 +3,120 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>utterance — proven, and gone</title>
-<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<title>utterance · terminal</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500&family=JetBrains+Mono:wght@400;500&display=swap');
-  :root{--void:#0a0a0c;--void-2:#121216;--ash:#6b6b78;--ash-dim:#3a3a44;--live:#e8e6df;--pulse:#7fd9c4;--pulse-dim:#3a6b60;--sign:#c9a86b;}
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap');
   *{margin:0;padding:0;box-sizing:border-box;}
   html,body{height:100%;overflow:hidden;}
-  body{background:radial-gradient(ellipse 80% 60% at 50% 0%,#15151b 0%,transparent 70%),var(--void);color:var(--live);font-family:'Fraunces',serif;height:100vh;display:flex;flex-direction:column;position:relative;}
-  body::after{content:'';position:fixed;inset:0;pointer-events:none;opacity:.035;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");z-index:999;}
-  header{padding:22px 26px 14px;display:flex;align-items:baseline;justify-content:space-between;border-bottom:1px solid var(--void-2);flex-shrink:0;}
-  .mark{font-size:19px;font-weight:300;letter-spacing:.04em;font-style:italic;}
-  .mark b{font-weight:500;font-style:normal;}
-  .creed{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--ash);}
-  #status{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--ash-dim);padding:6px 26px 0;flex-shrink:0;transition:color .6s;}
-  #status .dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--ash-dim);margin-right:7px;vertical-align:middle;transition:background .6s,box-shadow .6s;}
-  #status.alive .dot{background:var(--pulse);box-shadow:0 0 8px var(--pulse);}
-  #status.alive{color:var(--ash);}
-  #surface{flex:1;overflow:hidden;position:relative;padding:18px 26px;display:flex;flex-direction:column-reverse;gap:14px;mask-image:linear-gradient(to top,#000 78%,transparent 100%);}
-  #empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px;pointer-events:none;text-align:center;}
-  #empty .big{font-size:26px;font-weight:300;font-style:italic;color:var(--ash-dim);}
-  #empty .small{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--ash-dim);}
-  .block{align-self:flex-start;max-width:90%;animation:arrive .5s cubic-bezier(.2,.8,.2,1) both;position:relative;}
-  .block.mine{align-self:flex-end;text-align:right;}
-  .block .body{font-size:20px;font-weight:400;line-height:1.4;color:var(--live);}
-  .block .meta{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--ash-dim);margin-top:5px;}
-  .block .meta .proven{color:var(--sign);}
-  .block .meta .proven::before{content:'\2726 ';}
-  .block .meta .anon{color:var(--ash-dim);}
-  .block .meta .anon::before{content:'\25CC ';}
-  .block.fading{animation:dissolve 2.8s ease-in forwards;}
-  @keyframes arrive{from{opacity:0;transform:translateY(8px);filter:blur(4px);}to{opacity:1;transform:none;filter:blur(0);}}
-  @keyframes dissolve{0%{opacity:1;filter:blur(0);transform:none;}100%{opacity:0;filter:blur(6px);transform:translateY(-10px);letter-spacing:.2em;}}
-  footer{flex-shrink:0;border-top:1px solid var(--void-2);padding:14px 26px 20px;background:linear-gradient(to top,var(--void) 60%,transparent);}
-  .composer{display:flex;gap:12px;align-items:flex-end;}
-  #write{flex:1;background:transparent;border:none;border-bottom:1px solid var(--ash-dim);color:var(--live);font-family:'Fraunces',serif;font-size:19px;padding:8px 2px;resize:none;outline:none;max-height:120px;transition:border-color .4s;}
-  #write:focus{border-color:var(--pulse-dim);}
-  #write::placeholder{color:var(--ash-dim);font-style:italic;}
-  .controls{display:flex;flex-direction:column;gap:8px;align-items:flex-end;}
-  #signToggle{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--ash);background:transparent;border:1px solid var(--ash-dim);border-radius:20px;padding:5px 11px;cursor:pointer;white-space:nowrap;transition:all .3s;}
-  #signToggle.on{color:var(--sign);border-color:var(--sign);}
-  #place{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--void);background:var(--live);border:none;border-radius:20px;padding:9px 18px;cursor:pointer;transition:all .3s;white-space:nowrap;}
-  #place:disabled{background:var(--ash-dim);color:var(--void-2);cursor:default;}
-  .share{margin-top:12px;display:flex;align-items:center;gap:10px;}
-  .share .label{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--ash-dim);white-space:nowrap;}
-  #shareLink{flex:1;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--ash);background:var(--void-2);border:none;border-radius:4px;padding:7px 10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;}
-  #witnesses{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--pulse-dim);text-align:center;padding:8px 0 0;}
-  #witnesses b{color:var(--pulse);font-weight:500;}
+  body{
+    background:#05060a;
+    color:#9fe8c4;
+    font-family:'JetBrains Mono',monospace;
+    font-size:15px;
+    line-height:1.7;
+    height:100vh;
+    display:flex;flex-direction:column;
+    padding:0;
+    position:relative;
+  }
+  /* scanline + glow, the CRT hint */
+  body::before{
+    content:'';position:fixed;inset:0;pointer-events:none;z-index:5;
+    background:repeating-linear-gradient(transparent 0 2px,rgba(0,0,0,.12) 2px 3px);
+    opacity:.5;
+  }
+  body::after{
+    content:'';position:fixed;inset:0;pointer-events:none;z-index:4;
+    background:radial-gradient(ellipse 70% 60% at 50% 45%,rgba(60,255,180,.05),transparent 70%);
+  }
+  #bar{
+    flex-shrink:0;padding:10px 16px;border-bottom:1px solid #12241c;
+    color:#3a6b55;font-size:11px;letter-spacing:.18em;text-transform:uppercase;
+    display:flex;justify-content:space-between;
+  }
+  #bar .live{color:#9fe8c4;}
+  #screen{
+    flex:1;overflow:hidden;position:relative;padding:16px;
+    display:flex;flex-direction:column;justify-content:flex-end;gap:2px;
+    mask-image:linear-gradient(to top,#000 65%,transparent 98%);
+  }
+  .line{white-space:pre-wrap;word-break:break-word;animation:type .25s steps(8) both;}
+  .line .who{color:#3a6b55;}
+  .line .who.proven{color:#d8b56a;}
+  .line.fading{animation:drift 3.2s ease-in forwards;}
+  @keyframes type{from{opacity:0;}to{opacity:1;}}
+  @keyframes drift{
+    0%{opacity:1;transform:translateY(0);filter:blur(0);}
+    100%{opacity:0;transform:translateY(-26px);filter:blur(3px);letter-spacing:.15em;}
+  }
+  #promptline{
+    flex-shrink:0;padding:12px 16px 20px;border-top:1px solid #12241c;
+    display:flex;align-items:center;gap:10px;
+  }
+  #sigil{color:#3a6b55;}
+  #sigil.on{color:#d8b56a;}
+  #prompt{color:#5fbf8f;}
+  #inp{
+    flex:1;background:transparent;border:none;outline:none;
+    color:#cfeede;font-family:inherit;font-size:15px;caret-color:#9fe8c4;
+  }
+  #inp::placeholder{color:#2c4a3c;}
+  .cursor{display:inline-block;width:8px;height:16px;background:#9fe8c4;
+    animation:blink 1.1s steps(1) infinite;vertical-align:middle;margin-left:-4px;}
+  @keyframes blink{50%{opacity:0;}}
+  .hint{color:#2c4a3c;}
 </style>
 </head>
 <body>
-<header>
-  <div class="mark"><b>utterance</b></div>
-  <div class="creed">proven &middot; and gone</div>
-</header>
-<div id="status"><span class="dot"></span>opening the channel&hellip;</div>
-<div id="surface">
-  <div id="empty">
-    <div class="big">nothing is here</div>
-    <div class="small">what is placed lives only while watched</div>
+  <div id="bar">
+    <span>utterance</span>
+    <span class="live">&#9670; proven &middot; and gone</span>
   </div>
-</div>
-<div id="witnesses"></div>
-<footer>
-  <div class="composer">
-    <textarea id="write" rows="1" placeholder="say something into the room&hellip;"></textarea>
-    <div class="controls">
-      <button id="signToggle" title="Sign with this device's key — proves it was you, proves nothing about what.">&#9676; unsigned</button>
-      <button id="place" disabled>place</button>
-    </div>
+  <div id="screen"></div>
+  <div id="promptline">
+    <span id="sigil" title="tab to toggle signing">&#9676;</span>
+    <span id="prompt">&gt;</span>
+    <input id="inp" autocomplete="off" autofocus placeholder="say something — it will not stay">
   </div>
-  <div class="share">
-    <span class="label">this room &#8599;</span>
-    <div id="shareLink" title="Tap to copy. Open on another device to say into the same room.">generating&hellip;</div>
-  </div>
-</footer>
 
-<script type="module">
-const enc=new TextEncoder();
-const b64=b=>btoa(String.fromCharCode(...new Uint8Array(b))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
-const unb64=s=>{s=s.replace(/-/g,'+').replace(/_/g,'/');return Uint8Array.from(atob(s),c=>c.charCodeAt(0));};
-const rid=(n=12)=>b64(crypto.getRandomValues(new Uint8Array(n)));
-const safe=s=>s.replace(/[^a-zA-Z0-9]/g,'').slice(0,40);
+<script>
+const screen=document.getElementById('inp');
+const scr=document.getElementById('screen');
+const inp=document.getElementById('inp');
+const sigil=document.getElementById('sigil');
+let signing=false;
+const TTL=5200; // short in the preview so you SEE it drift away
 
-const WITNESS_TTL=14000, HEARTBEAT=3500, PRESENCE_TTL=10000;
-
-// identity (optional proof)
-let signing=false,keys=null,myPubRaw=null;
-async function ensureKeys(){ if(keys)return; keys=await crypto.subtle.generateKey({name:'ECDSA',namedCurve:'P-256'},true,['sign','verify']); myPubRaw=b64(await crypto.subtle.exportKey('raw',keys.publicKey)); }
-// The signed payload is bound to: room, author, text, timestamp, and a one-time nonce.
-// This makes a captured signature useless elsewhere: wrong room fails, a stale timestamp
-// is rejected, and a replayed nonce is caught. "Proven" now means: this author said this,
-// in THIS room, ONCE, at THIS time — not just "some author signed this text sometime."
-function sigPayload(o){ return [ROOM, o.pub, o.text, o.ts, o.nonce].join('\u0001'); }
-async function sign(o){ return b64(await crypto.subtle.sign({name:'ECDSA',hash:'SHA-256'},keys.privateKey,enc.encode(sigPayload(o)))); }
-async function verify(o){
-  try{
-    const pk=await crypto.subtle.importKey('raw',unb64(o.pub),{name:'ECDSA',namedCurve:'P-256'},true,['verify']);
-    return await crypto.subtle.verify({name:'ECDSA',hash:'SHA-256'},pk,unb64(o.sig),enc.encode(sigPayload(o)));
-  }catch{return false;}
+function emit(text,who,proven){
+  const l=document.createElement('div');
+  l.className='line';
+  const mark=proven?'<span class="who proven">&#9670; '+who+'</span>':'<span class="who">&#9676; anon</span>';
+  l.innerHTML=mark+'  '+escapeHtml(text);
+  scr.appendChild(l);
+  setTimeout(()=>{
+    l.classList.add('fading');
+    setTimeout(()=>l.remove(),3200);
+  },TTL);
 }
-const SIG_WINDOW=120000;          // a signed message older than this is rejected as stale
-const usedNonces=new Map();       // nonce -> ts, to catch replays (pruned by window)
-function nonceFresh(nonce,ts){
-  const now=Date.now();
-  if(Math.abs(now-ts)>SIG_WINDOW) return false;     // too old (or absurd future) -> stale
-  if(usedNonces.has(nonce)) return false;            // already seen -> replay
-  usedNonces.set(nonce,ts);
-  // prune old nonces so the map can't grow unbounded
-  if(usedNonces.size>500){ for(const[k,t]of usedNonces){ if(now-t>SIG_WINDOW) usedNonces.delete(k); } }
-  return true;
-}
+function escapeHtml(s){return s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 
-// room
-let ROOM=location.hash.slice(1);
-if(!ROOM){ ROOM=rid(9); location.hash=ROOM; }
-const ROOMKEY=safe(ROOM);
-const HOST_ID='utt-'+ROOMKEY+'-host';          // deterministic rendezvous point
-const MY_ID='utt-'+ROOMKEY+'-'+Math.random().toString(36).slice(2,9);
-
-// surface
-const surface=document.getElementById('surface'), emptyEl=document.getElementById('empty');
-const live=new Map();
-function refreshEmpty(){ emptyEl.style.display=live.size?'none':'flex'; }
-function place(block,mine){
-  if(live.has(block.id)){ const r=live.get(block.id); r.expires=Date.now()+WITNESS_TTL; r.el.classList.remove('fading'); return; }
-  const el=document.createElement('div'); el.className='block'+(mine?' mine':'');
-  const proof=block.sig?`<span class="proven">proven &middot; ${block.pub.slice(0,8)}</span>`:`<span class="anon">unsigned</span>`;
-  el.innerHTML=`<div class="body"></div><div class="meta">${proof}</div>`;
-  el.querySelector('.body').textContent=block.text;
-  surface.appendChild(el); live.set(block.id,{el,expires:Date.now()+WITNESS_TTL}); refreshEmpty();
-}
-setInterval(()=>{const now=Date.now();for(const[id,r]of live){if(now>r.expires&&!r.el.classList.contains('fading')){r.el.classList.add('fading');setTimeout(()=>{r.el.remove();live.delete(id);refreshEmpty();},2800);}}},1000);
-setInterval(()=>{ if(peers.size>0)for(const r of live.values())r.expires=Math.max(r.expires,Date.now()+5000); },3000);
-
-// mesh
-const statusEl=document.getElementById('status');
-function setStatus(t,alive){ statusEl.childNodes[1].nodeValue=' '+t; statusEl.classList.toggle('alive',!!alive); }
-const peers=new Map();   // peerId -> {conn,lastSeen}
-const seen=new Set();
-let peer=null, isHost=false;
-
-function broadcast(obj,exceptId){ const d=JSON.stringify(obj); for(const[pid,r]of peers){ if(pid===exceptId)continue; try{ if(r.conn&&r.conn.open)r.conn.send(d);}catch{} } }
-
-function wire(conn){
-  conn.on('open',()=>{
-    pending.delete(conn.peer);
-    peers.set(conn.peer,{conn,lastSeen:Date.now()}); renderWitnesses();
-    setStatus(isHost?'hosting the room · spoken together':'spoken together · direct',true);
-    conn.send(JSON.stringify({t:'hello',from:MY_ID}));
-    // the host introduces this newcomer to everyone else, so guests find each other
-    if(isHost){
-      const others=[...peers.keys()].filter(p=>p!==conn.peer);
-      conn.send(JSON.stringify({t:'roster',peers:others}));
-      broadcast({t:'arrive',who:conn.peer},conn.peer);
-    }
-  });
-  conn.on('data',async raw=>{
-    let m; try{m=JSON.parse(raw);}catch{return;}
-    if(peers.has(conn.peer))peers.get(conn.peer).lastSeen=Date.now();
-    if(m.t==='hello'||m.t==='beat'){ renderWitnesses(); return; }
-    if(m.t==='roster'){ for(const pid of (m.peers||[])) connectTo(pid); return; }
-    if(m.t==='arrive'){ if(m.who&&m.who!==MY_ID) connectTo(m.who); return; }
-    if(m.t==='block'){
-      if(seen.has(m.id))return; seen.add(m.id);
-      let ok=true;
-      if(m.sig){
-        // a signed message must verify AND be fresh AND not a replay
-        ok = await verify(m) && nonceFresh(m.nonce, m.ts);
-      }
-      if(!ok)return;
-      place(m,false); broadcast(m,conn.peer);  // multi-hop flood
-    }
-  });
-  conn.on('close',()=>{pending.delete(conn.peer);peers.delete(conn.peer);renderWitnesses();});
-  conn.on('error',()=>{pending.delete(conn.peer);peers.delete(conn.peer);renderWitnesses();});
-}
-
-const pending=new Set();
-function connectTo(pid){
-  if(!peer||pid===MY_ID||(pid===HOST_ID&&isHost)||peers.has(pid)||pending.has(pid))return null;
-  try{
-    const c=peer.connect(pid,{reliable:true,serialization:'json'});
-    if(c){
-      pending.add(pid); wire(c);
-      // if it never opens, free the slot so the pursue loop can retry
-      setTimeout(()=>{ if(pending.has(pid)&&!peers.has(pid)){ pending.delete(pid); try{c.close();}catch{} } },4000);
-    }
-    return c;
-  }catch{ return null; }
-}
-
-// Guest keeps trying to reach the host until connected. It does NOT promote itself
-// to host on a single miss — only if the host seat is truly empty after several tries.
-let hostTries=0;
-function guestPursueHost(){
-  if(isHost) return;                          // we became host elsewhere
-  if(peers.has(HOST_ID)){ hostTries=0; return; } // connected — done pursuing
-  hostTries++;
-  setStatus('joining the room… ('+hostTries+')',true);
-  connectTo(HOST_ID);
-  if(hostTries>=5){
-    // host genuinely never answered across ~5 tries -> claim the empty seat
-    hostTries=0;
-    try{peer.destroy();}catch{}
-    setTimeout(()=>start(true),300);
-    return;
+inp.addEventListener('keydown',e=>{
+  if(e.key==='Tab'){e.preventDefault();signing=!signing;sigil.className=signing?'on':'';sigil.innerHTML=signing?'&#9670;':'&#9676;';return;}
+  if(e.key==='Enter'){
+    const v=inp.value.trim();if(!v)return;
+    emit(v, signing?'a3f9c1':'anon', signing);
+    inp.value='';
   }
-  setTimeout(guestPursueHost,1200);           // retry with steady backoff
-}
+});
 
-// ICE servers: STUN finds your address; TURN relays (DTLS-encrypted, stores nothing)
-// only when a direct device-to-device punch fails. Same-network peers still go pure P2P.
-// OpenRelay is a free public TURN — fine to prove cross-network works; swap for your own
-// (coturn) or Cloudflare TURN once it's worth owning the relay.
-const ICE = { iceServers: [
-  { urls: 'stun:stun.l.google.com:19302' },
-  { urls: 'stun:stun.cloudflare.com:3478' },
-  { urls: 'turn:openrelay.metered.ca:80', username:'openrelayproject', credential:'openrelayproject' },
-  { urls: 'turn:openrelay.metered.ca:443', username:'openrelayproject', credential:'openrelayproject' },
-  { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username:'openrelayproject', credential:'openrelayproject' }
-] };
-
-function start(asHost){
-  isHost=asHost;
-  peer=new Peer(asHost?HOST_ID:MY_ID,{debug:1, config:ICE});
-
-  peer.on('open',()=>{
-    if(asHost){ setStatus('room open · hosting · waiting for others',true); }
-    else{ setStatus('joining the room…',true); hostTries=0; guestPursueHost(); }
-  });
-
-  peer.on('connection',wire);
-
-  peer.on('error',err=>{
-    if(err.type==='unavailable-id'){
-      // host seat already taken -> we are a guest; connect to the existing host
-      try{peer.destroy();}catch{}
-      setTimeout(()=>start(false),200);
-      return;
-    }
-    if(err.type==='peer-unavailable'){
-      // a connect attempt missed. DO NOT flip roles here — guestPursueHost handles retries.
-      return;
-    }
-    if(err.type==='network'||err.type==='server-error'||err.type==='socket-error'){
-      setStatus('broker unreachable · retrying…',false);
-      try{peer.destroy();}catch{}
-      setTimeout(()=>start(isHost),1500);
-      return;
-    }
-    // unknown errors: surface but don't crash the room
-    setStatus('mesh note: '+err.type,!!peers.size);
-  });
-
-  peer.on('disconnected',()=>{ setStatus('link slipped · reconnecting…',false); try{peer.reconnect();}catch{} });
-}
-
-// Try to BE the host at the known seat. If it's taken, the 'unavailable-id' path
-// turns us into a guest that pursues the existing host. No role-flip races.
-start(true);
-
-// presence
-const witnessEl=document.getElementById('witnesses');
-function renderWitnesses(){
-  for(const[pid,r]of peers){ if(!r.conn||!r.conn.open)peers.delete(pid); }
-  const n=peers.size+1;
-  witnessEl.innerHTML=n===1?`you are the only one here · what you place will not outlast your looking`:`<b>${n}</b> saying · held directly, device to device`;
-}
-setInterval(()=>{ for(const r of peers.values()){ if(r.conn&&r.conn.open)try{r.conn.send(JSON.stringify({t:'beat',from:MY_ID}));}catch{} } },HEARTBEAT);
-setInterval(renderWitnesses,1500); renderWitnesses();
-
-// placing
-const write=document.getElementById('write'), placeBtn=document.getElementById('place'), signBtn=document.getElementById('signToggle');
-write.addEventListener('input',()=>{ placeBtn.disabled=!write.value.trim(); write.style.height='auto'; write.style.height=Math.min(write.scrollHeight,120)+'px'; });
-write.addEventListener('keydown',e=>{ if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();doPlace();} });
-signBtn.onclick=async()=>{ signing=!signing; if(signing)await ensureKeys(); signBtn.classList.toggle('on',signing); signBtn.textContent=signing?'\u2726 signing':'\u25CC unsigned'; };
-async function doPlace(){
-  const text=write.value.trim(); if(!text)return;
-  const ts=Date.now(); const block={t:'block',id:rid(8),text,ts,sig:null,pub:null,nonce:null};
-  if(signing){ await ensureKeys(); block.pub=myPubRaw; block.nonce=rid(8); block.sig=await sign(block); }
-  seen.add(block.id); place(block,true); broadcast(block);
-  write.value=''; write.style.height='auto'; placeBtn.disabled=true;
-}
-placeBtn.onclick=doPlace;
-
-// share
-const shareEl=document.getElementById('shareLink');
-shareEl.textContent=location.href;
-shareEl.onclick=async()=>{ try{ await navigator.clipboard.writeText(location.href); const old=shareEl.textContent; shareEl.textContent='copied — open it elsewhere to share the room'; setTimeout(()=>shareEl.textContent=old,1800);}catch{} };
+// a little ambient demo so the screen isn't empty on open
+const demo=[
+  ['this exists only while you watch it',false],
+  ['nothing is being saved',true],
+  ['close the tab and it was never anywhere',false],
+];
+let i=0;
+(function seed(){ if(i<demo.length){ emit(demo[i][0],demo[i][1]?'a3f9c1':'anon',demo[i][1]); i++; setTimeout(seed,1400);} })();
 </script>
 </body>
 </html>
