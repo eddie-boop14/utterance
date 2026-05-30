@@ -269,6 +269,10 @@ function start(asHost){
       return;
     }
     if(err.type==='network'||err.type==='server-error'||err.type==='socket-error'){
+      // Broker trouble. If the mesh is still up the room WORKS — leave the live data
+      // channels alone and don't alarm; the watchdog reconnects the broker in the
+      // background. Only tear down and rebuild a fresh session when we're alone.
+      if(peers.size>0){ return; }
       setStatus('broker unreachable · retrying…',false);
       try{peer.destroy();}catch{}
       setTimeout(()=>start(isHost),1500);
@@ -364,7 +368,7 @@ const sigilT=document.getElementById('sigil');
 const statusT=document.getElementById('status');
 const witReadout=document.getElementById('witnessReadout');
 // Visible build tag — a quick way to confirm which deploy is actually loaded.
-const BUILD='b7';
+const BUILD='b8';
 const buildEl=document.getElementById('build'); if(buildEl) buildEl.textContent=BUILD;
 
 function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
