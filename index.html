@@ -188,8 +188,11 @@ function wire(conn){
       place(m,false); broadcast(m,conn.peer);  // multi-hop flood
     }
   });
-  conn.on('close',()=>{pending.delete(conn.peer);peers.delete(conn.peer);renderWitnesses();});
-  conn.on('error',()=>{pending.delete(conn.peer);peers.delete(conn.peer);renderWitnesses();});
+  // only drop the peer if THIS conn is still the live one — a late close from a stale
+  // connection must not evict the fresh conn a reconnect just established.
+  const drop=()=>{ pending.delete(conn.peer); const r=peers.get(conn.peer); if(r&&r.conn===conn)peers.delete(conn.peer); renderWitnesses(); };
+  conn.on('close',drop);
+  conn.on('error',drop);
 }
 
 const pending=new Set();
@@ -275,6 +278,17 @@ function start(asHost){
 // Try to BE the host at the known seat. If it's taken, the 'unavailable-id' path
 // turns us into a guest that pursues the existing host. No role-flip races.
 start(true);
+
+// Reconnect watchdog. guestPursueHost's loop stops once linked, so a guest that later
+// loses the host (data channel dropped, or the broker link slipped and came back) had
+// no way back in — it sat on "reconnecting…" forever. This drives recovery from either
+// state: first get the broker socket back, then, if we're a guest with no host link and
+// aren't already pursuing, resume the pursuit. The host just keeps its seat and waits.
+setInterval(()=>{
+  if(!peer||peer.destroyed)return;
+  if(peer.disconnected){ try{peer.reconnect();}catch{} return; } // broker first
+  if(!isHost&&!peers.has(HOST_ID)&&hostTries===0) guestPursueHost();
+},3000);
 
 // presence
 const witnessEl=document.getElementById('witnesses');
