@@ -80,6 +80,7 @@
 
   <div id="foot">
     <span id="witnessReadout">&middot;</span>
+    <span id="build" style="color:#1f3a2e;margin:0 8px;white-space:nowrap;"></span>
     <span id="shareLink" title="tap to copy">&hellip;</span>
   </div>
 
@@ -292,7 +293,7 @@ function reconnectTick(){
   if(peer.destroyed){ reconnTries=0; start(isHost); return; }
   if(peer.disconnected){
     if(reconnTries++ < 2){ try{peer.reconnect();}catch{} }       // cheap reconnect first
-    else { reconnTries=0; try{peer.destroy();}catch{} setTimeout(()=>start(isHost),300); } // then full rebuild
+    else { reconnTries=0; setStatus('re-opening the channel…',false); try{peer.destroy();}catch{} setTimeout(()=>start(isHost),300); } // then full rebuild
     return;
   }
   reconnTries=0;                                                  // broker is healthy
@@ -343,6 +344,9 @@ const inpT=document.getElementById('inp');
 const sigilT=document.getElementById('sigil');
 const statusT=document.getElementById('status');
 const witReadout=document.getElementById('witnessReadout');
+// Visible build tag — a quick way to confirm which deploy is actually loaded.
+const BUILD='b5';
+const buildEl=document.getElementById('build'); if(buildEl) buildEl.textContent=BUILD;
 
 function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 
