@@ -103,6 +103,12 @@ const WITNESS_TTL=14000, HEARTBEAT=3500, PRESENCE_TTL=10000;
 
 // identity (optional proof)
 let signing=false,keys=null,myPubRaw=null;
+// voiceprint: a signing key's SHA-256 rendered as three words a human can say aloud.
+// If the words they see match the words you speak, no one sits between you.
+const VP_WORDS=['acorn','amber','anchor','apple','arrow','ash','atlas','autumn','badge','bamboo','basil','beacon','bell','birch','bison','blaze','bloom','bolt','bonsai','breeze','brick','brook','bronze','cabin','cactus','candle','canyon','cedar','chalk','cherry','cliff','cloud','clover','coal','cobalt','comet','coral','cove','crane','creek','crest','crow','dawn','delta','denim','dew','dome','drift','dune','dusk','eagle','ebony','echo','ember','fable','falcon','fern','field','fig','fjord','flame','flint','fog','forest','fox','frost','galaxy','garnet','gate','gale','glacier','glen','gold','grain','granite','grape','grove','gull','harbor','hawk','hazel','heron','hill','honey','ice','iris','iron','island','ivory','ivy','jade','jasper','jet','juniper','kelp','kite','lagoon','lake','lantern','larch','laurel','lava','leaf','ledge','lemon','lilac','lily','lime','linen','lotus','lunar','lynx','maple','marble','meadow','mesa','mint','mist','moon','moss','moth','night','ninth','north','nova','oak','oasis','ocean','olive','onyx','opal','orbit','orchid','otter','owl','palm','peak','pearl','pebble','pine','plume','polar','pond','poppy','prism','quail','quartz','quill','rain','raven','reed','ridge','river','robin','rose','ruby','rune','rust','sage','salt','sand','scout','sea','sequoia','shade','shell','shore','silver','sky','slate','snow','solar','sparrow','spring','spruce','star','stone','storm','summit','sun','swan','thistle','thorn','thunder','tide','tiger','timber','topaz','torch','trail','tulip','tundra','twig','umber','valley','vapor','velvet','vine','violet','walnut','wave','wheat','willow','wind','winter','wolf','wren','zephyr','zinc','alder','aspen','bay','briar','candle2','cinder','cliffs','coast','copper','cypress','ellipse','ferns','flare','gleam','gorge','haze','hemlock','inlet','jetty','knoll','loch','marsh','mica','nectar','nettle','oat','ochre','pond2','pika','pinecone','plume2','raft','reef','sail','shale','sled','snowcap','spark','sprig','steppe','strait','swell','talon','tarn','teal','tern','trout'];
+const vpCache=new Map();
+async function voiceprint(pubB64){ if(vpCache.has(pubB64))return vpCache.get(pubB64); const d=new Uint8Array(await crypto.subtle.digest('SHA-256',unb64(pubB64))); const vp=[d[0],d[1],d[2]].map(b=>VP_WORDS[b]).join(' \u00b7 '); vpCache.set(pubB64,vp); return vp; }
+async function showMyMark(){ await ensureKeys(); const vp=await voiceprint(myPubRaw); setStatus('your mark \u2726 '+vp+' \u00b7 speak it to be verified',true); }
 async function ensureKeys(){ if(keys)return; keys=await crypto.subtle.generateKey({name:'ECDSA',namedCurve:'P-256'},true,['sign','verify']); myPubRaw=b64(await crypto.subtle.exportKey('raw',keys.publicKey)); }
 // The signed payload is bound to: room, author, text, timestamp, and a one-time nonce.
 // This makes a captured signature useless elsewhere: wrong room fails, a stale timestamp
@@ -368,7 +374,7 @@ const sigilT=document.getElementById('sigil');
 const statusT=document.getElementById('status');
 const witReadout=document.getElementById('witnessReadout');
 // Visible build tag — a quick way to confirm which deploy is actually loaded.
-const BUILD='b8';
+const BUILD='b9';
 const buildEl=document.getElementById('build'); if(buildEl) buildEl.textContent=BUILD;
 
 function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
@@ -382,6 +388,7 @@ place=function(block,mine){
   el.innerHTML=`${who}  <span class="txt">${esc(block.text)}</span>`;
   scr.appendChild(el);
   live.set(block.id,{el,expires:Date.now()+WITNESS_TTL});
+  if(block.sig){ const w=el.querySelector('.who'); voiceprint(block.pub).then(vp=>{ w.title=vp; w.style.cursor='pointer'; w.onclick=()=>{ if(w.dataset.on){ w.textContent=w.dataset.p; delete w.dataset.on; } else { w.dataset.p=w.textContent; w.dataset.on='1'; w.textContent='\u2726 '+vp; } }; }); }
   emptyT.style.display='none';
 };
 refreshEmpty=function(){ emptyT.style.display=live.size?'none':'flex'; };
@@ -398,10 +405,10 @@ renderWitnesses=function(){
 
 // wire the terminal input to the engine's doPlace()
 inpT.addEventListener('keydown',e=>{
-  if(e.key==='Tab'){ e.preventDefault(); signing=!signing; if(signing)ensureKeys(); sigilT.className=signing?'on':''; sigilT.innerHTML=signing?'&#9670;':'&#9676;'; return; }
+  if(e.key==='Tab'){ e.preventDefault(); signing=!signing; if(signing)showMyMark(); sigilT.className=signing?'on':''; sigilT.innerHTML=signing?'&#9670;':'&#9676;'; return; }
   if(e.key==='Enter'){ e.preventDefault(); const v=inpT.value.trim(); if(!v)return; document.getElementById('write').value=v; doPlace(); inpT.value=''; }
 });
-sigilT.addEventListener('click',()=>{ signing=!signing; if(signing)ensureKeys(); sigilT.className=signing?'on':''; sigilT.innerHTML=signing?'&#9670;':'&#9676;'; });
+sigilT.addEventListener('click',()=>{ signing=!signing; if(signing)showMyMark(); sigilT.className=signing?'on':''; sigilT.innerHTML=signing?'&#9670;':'&#9676;'; });
 
 // doPlace reads #write; make sure the hidden write mirrors our input at send time (done above)
 // share readout
@@ -414,6 +421,12 @@ if(window.visualViewport){
   window.visualViewport.addEventListener('resize',()=>{ inpT.scrollIntoView({block:'end'}); });
 }
 renderWitnesses();
+
+// panic — Escape (or triple-tap the footer readout) empties the room on your side, instantly.
+function panic(){ for(const r of live.values()){ try{r.el.remove();}catch{} } live.clear(); inpT.value=''; refreshEmpty(); setStatus('wiped \u00b7 the room forgets',true); }
+document.addEventListener('keydown',e=>{ if(e.key==='Escape')panic(); });
+let _taps=0,_tapT=null;
+witReadout.addEventListener('click',()=>{ _taps++; clearTimeout(_tapT); _tapT=setTimeout(()=>_taps=0,600); if(_taps>=3){ _taps=0; panic(); } });
 </script>
 </body>
 </html>
