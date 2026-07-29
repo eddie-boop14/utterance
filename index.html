@@ -340,7 +340,7 @@ window.addEventListener('online',reconnectTick);
 // presence
 const witnessEl=document.getElementById('witnesses');
 function renderWitnesses(){
-  for(const[pid,r]of peers){ if(!r.conn||!r.conn.open)peers.delete(pid); }
+  for(const[pid,r]of peers){ if(!r.conn||!r.conn.open||Date.now()-r.lastSeen>PRESENCE_TTL){ try{r.conn&&r.conn.close();}catch{} peers.delete(pid); } }
   const n=peers.size+1;
   witnessEl.innerHTML=n===1?`you are the only one here · what you place will not outlast your looking`:`<b>${n}</b> saying · held directly, device to device`;
 }
@@ -374,7 +374,7 @@ const sigilT=document.getElementById('sigil');
 const statusT=document.getElementById('status');
 const witReadout=document.getElementById('witnessReadout');
 // Visible build tag — a quick way to confirm which deploy is actually loaded.
-const BUILD='b9';
+const BUILD='b10';
 const buildEl=document.getElementById('build'); if(buildEl) buildEl.textContent=BUILD;
 
 function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
@@ -398,7 +398,7 @@ setStatus=function(t,alive){ statusT.textContent=t; statusT.classList.toggle('al
 
 // override renderWitnesses() -> footer readout
 renderWitnesses=function(){
-  for(const[pid,r]of peers){ if(!r.conn||!r.conn.open)peers.delete(pid); }
+  for(const[pid,r]of peers){ if(!r.conn||!r.conn.open||Date.now()-r.lastSeen>PRESENCE_TTL){ try{r.conn&&r.conn.close();}catch{} peers.delete(pid); } }
   const n=peers.size+1;
   witReadout.textContent = n===1 ? 'you alone' : n+' present';
 };
