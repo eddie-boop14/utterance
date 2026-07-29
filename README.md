@@ -13,12 +13,19 @@ Open the page, share the room link with one person, talk. That's the product.
 
 - **Transport:** WebRTC data channels, browser-native DTLS encryption end to end.
 - **Rooms:** 96-bit random IDs (`crypto.getRandomValues`) — unguessable, unenumerable.
-- **Authenticity:** every message is signed with an ECDSA P-256 key (WebCrypto) generated
-  fresh per session and verified by the peer.
+- **Authenticity (optional, per message):** toggle signing (Tab or the sigil) and each
+  message carries an ECDSA P-256 signature bound to the room, the text, a timestamp and a
+  one-time nonce — replayed or cross-room signatures are rejected.
+- **Voiceprint:** your signing key's SHA-256 renders as three words ("ember · lagoon ·
+  ninth"). Speak yours aloud; tap any ◆ mark to reveal the sender's. If what they see
+  matches what you say, no one sits between you.
+- **Panic:** Escape — or triple-tap the footer — instantly empties the room on your device.
 - **Connectivity:** STUN (Google, Cloudflare) for NAT traversal; TURN relay (OpenRelay)
   as fallback when direct connection fails. The relay carries only DTLS-encrypted bytes.
 - **Persistence:** none. No localStorage, no sessionStorage, no IndexedDB, no cookies.
-  Message history lives in the DOM of an open tab and dies with it.
+  Messages exist only on screen, and once you're alone in the room they fade away on
+  their own within seconds. Nothing survives the tab; most things don't survive the
+  minute.
 
 ## Threat model — read this before trusting it
 
@@ -36,10 +43,11 @@ Known limitations, stated plainly:
 1. **Metadata is not hidden.** The signaling server learns that a conversation happened
    and between which IPs. If your threat model includes hiding *that you talked*, use Tor
    or don't use a browser tool.
-2. **Key exchange is in-band (TOFU).** Public keys travel through the signaling channel at
-   session start. A malicious signaling server could in principle interpose (MITM). There
-   is no out-of-band key verification yet. Verifying a short fingerprint by voice is the
-   planned mitigation.
+2. **Key exchange is in-band — but MITM is now detectable.** Keys travel with signed
+   messages, so a malicious signaling server could in principle interpose. The voiceprint
+   exists exactly for this: compare the three words out loud (or over any second channel)
+   and an impostor key is exposed immediately. Unsigned (anon) messages carry no key and
+   remain unauthenticated by design.
 3. **No forward secrecy claims.** Session keys are fresh per session and never stored,
    but this is not a Signal-grade ratchet and doesn't pretend to be.
 4. **The other person's device is out of scope.** Ephemeral means *we* keep nothing;
